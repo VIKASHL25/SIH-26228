@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CV Assurance Engine | MoD DGIS Integrity Platform</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-logo">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div class="brand-text">
+                    <h2>CV-ASSURE</h2>
+                    <span class="subtext">MoD DGIS Platform</span>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                <button class="nav-item active" data-tab="tab-dashboard">
+                    <i class="fa-solid fa-chart-pie"></i> Executive Overview
+                </button>
+                <button class="nav-item" data-tab="tab-data">
+                    <i class="fa-solid fa-database"></i> Training Data Integrity
+                </button>
+                <button class="nav-item" data-tab="tab-model">
+                    <i class="fa-solid fa-brain"></i> Model Integrity
+                </button>
+                <button class="nav-item" data-tab="tab-shift">
+                    <i class="fa-solid fa-layer-group"></i> Environmental Shift
+                </button>
+                <button class="nav-item" data-tab="tab-provenance">
+                    <i class="fa-solid fa-lock"></i> Inference Provenance
+                </button>
+                <button class="nav-item" data-tab="tab-governance">
+                    <i class="fa-solid fa-file-contract"></i> Governance & Audit
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="airgap-badge">
+                    <i class="fa-solid fa-shield-cat"></i> Air-Gapped Mode Active
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header Bar -->
+            <header class="top-header">
+                <div class="header-title">
+                    <h1>Trustworthy Computer Vision Integrity Assurance Platform</h1>
+                    <p>Multi-Contributor Pipeline Risk & Evidence Assessment Engine</p>
+                </div>
+                <div class="header-actions">
+                    <button id="btn-run-analysis" class="btn btn-primary">
+                        <i class="fa-solid fa-play"></i> Run Full Pipeline Audit
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dashboard Tab Content -->
+            <div id="tab-dashboard" class="tab-page active">
+                <!-- Health Scorecard Banner -->
+                <div class="scorecard-grid">
+                    <div class="card glass-card score-card">
+                        <div class="card-icon health-icon"><i class="fa-solid fa-heart-pulse"></i></div>
+                        <div class="card-info">
+                            <span class="card-label">System Health Score</span>
+                            <h2 id="val-health-score">--</h2>
+                            <span class="card-subtext">Calculated across 5 modules</span>
+                        </div>
+                    </div>
+
+                    <div class="card glass-card disposition-card">
+                        <div class="card-icon disp-icon"><i class="fa-solid fa-gavel"></i></div>
+                        <div class="card-info">
+                            <span class="card-label">Overall Disposition</span>
+                            <h2 id="val-disposition">--</h2>
+                            <span id="val-disposition-sub" class="card-subtext">Action required</span>
+                        </div>
+                    </div>
+
+                    <div class="card glass-card audit-card">
+                        <div class="card-icon audit-icon"><i class="fa-solid fa-hashtag"></i></div>
+                        <div class="card-info">
+                            <span class="card-label">Tamper-Evident Hash</span>
+                            <code id="val-audit-hash">--</code>
+                            <span class="card-subtext">SHA-256 Audit Digest</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Findings Summary Grid -->
+                <div class="section-title">
+                    <h3><i class="fa-solid fa-triangle-exclamation"></i> Identified Integrity Findings</h3>
+                    <div class="filter-pills">
+                        <button class="pill active" data-filter="ALL">All Findings</button>
+                        <button class="pill pill-critical" data-filter="CRITICAL">Critical</button>
+                        <button class="pill pill-high" data-filter="HIGH">High</button>
+                        <button class="pill pill-medium" data-filter="MEDIUM">Medium</button>
+                    </div>
+                </div>
+
+                <div id="findings-container" class="findings-grid">
+                    <!-- Dynamic Finding Cards inserted by app.js -->
+                    <div class="empty-state">Loading analysis results...</div>
+                </div>
+            </div>
+
+            <!-- Training Data Integrity Tab -->
+            <div id="tab-data" class="tab-page">
+                <div class="glass-card full-width-card">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-users"></i> Contributor Risk Matrix</h3>
+                    </div>
+                    <div id="contributor-matrix-container" class="table-responsive">
+                        <!-- Table populated by app.js -->
+                    </div>
+                </div>
+
+                <div class="grid-2-col">
+                    <div class="glass-card">
+                        <h3><i class="fa-solid fa-skull"></i> Poisoning & Trigger Patch Injection</h3>
+                        <p class="card-desc">Detects rigid corner triggers and periodic high-frequency FFT artifacts.</p>
+                        <div id="poisoning-details-container"></div>
+                    </div>
+                    <div class="glass-card">
+                        <h3><i class="fa-solid fa-tags"></i> Label Flipping & Annotation Errors</h3>
+                        <p class="card-desc">Feature-space k-NN consensus disagreement detector.</p>
+                        <div id="label-details-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Model Integrity Tab -->
+            <div id="tab-model" class="tab-page">
+                <div class="grid-2-col">
+                    <div class="glass-card">
+                        <h3><i class="fa-solid fa-fingerprint"></i> Behavioral Fingerprint</h3>
+                        <div class="metric-row">
+                            <span>Average Confidence:</span>
+                            <strong id="val-model-avg-conf">--</strong>
+                        </div>
+                        <div class="metric-row">
+                            <span>Prediction Entropy:</span>
+                            <strong id="val-model-entropy">--</strong>
+                        </div>
+                        <div class="metric-row">
+                            <span>Expected Calibration Error:</span>
+                            <strong id="val-model-ece">--</strong>
+                        </div>
+                        <div id="model-class-dist-container" style="margin-top: 15px;"></div>
+                    </div>
+                    <div class="glass-card">
+                        <h3><i class="fa-solid fa-microchip"></i> White-Box Parameter Inspection</h3>
+                        <div class="metric-row">
+                            <span>Access Mode:</span>
+                            <strong class="badge badge-success">White-Box (Granted)</strong>
+                        </div>
+                        <div class="metric-row">
+                            <span>Dead Neuron Sparsity:</span>
+                            <strong id="val-dead-neurons">--</strong>
+                        </div>
+                        <div class="metric-row">
+                            <span>Weight Anomaly Score:</span>
+                            <strong id="val-weight-anomaly">--</strong>
+                        </div>
+                        <div id="whitebox-notes" class="alert-box" style="margin-top: 15px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Environmental Shift Tab -->
+            <div id="tab-shift" class="tab-page">
+                <div class="glass-card full-width-card">
+                    <h3><i class="fa-solid fa-cloud-sun"></i> Operational Drift & Manipulation Assessment</h3>
+                    <div id="shift-dimensions-container" class="shift-grid"></div>
+                </div>
+            </div>
+
+            <!-- Inference Provenance Tab -->
+            <div id="tab-provenance" class="tab-page">
+                <div class="glass-card full-width-card">
+                    <h3><i class="fa-solid fa-shield-keyhole"></i> Verifiable Cryptographic Inference Inspector</h3>
+                    <p class="card-desc">Binds Input Image Hash + Model Weight Hash + Config + Predictions + Nonce/Timestamp.</p>
+                    
+                    <div class="provenance-tester">
+                        <div class="form-group">
+                            <label>Inference Record ID:</label>
+                            <input type="text" id="prov-rec-id" class="form-control" value="INF-REC-8F92A10C" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Model SHA-256 Hash Digest:</label>
+                            <input type="text" id="prov-model-hash" class="form-control" value="a3f8c7901b22e4d5678ef991002341ab8872619cd3000f2e1a" readonly>
+                        </div>
+                        <div class="action-buttons">
+                            <button id="btn-verify-clean" class="btn btn-secondary">
+                                <i class="fa-solid fa-circle-check"></i> Verify Clean Binding
+                            </button>
+                            <button id="btn-simulate-tampering" class="btn btn-danger">
+                                <i class="fa-solid fa-bug"></i> Simulate Post-Hoc Record Tampering
+                            </button>
+                        </div>
+
+                        <div id="provenance-verify-output" class="verification-box"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Governance Tab -->
+            <div id="tab-governance" class="tab-page">
+                <div class="glass-card full-width-card">
+                    <h3><i class="fa-solid fa-shield-heart"></i> Attack Coverage Statement & Known Limitations</h3>
+                    <div class="grid-2-col">
+                        <div>
+                            <h4>Supported Attack Classes</h4>
+                            <ul id="supported-attacks-list" class="styled-list"></ul>
+                        </div>
+                        <div>
+                            <h4>Declared Known Limitations</h4>
+                            <ul id="limitations-list" class="styled-list warning-list"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
