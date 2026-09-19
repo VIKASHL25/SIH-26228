@@ -35,11 +35,11 @@ def load_sample_model(model_path: str) -> DummyCVModel:
 
     model = DummyCVModel()
 
-    state_dict = torch.load(
-        model_path,
-        map_location="cpu",
-        weights_only=True
-    )
+    state_dict = torch.load(model_path, map_location="cpu", weights_only=True)
+    if isinstance(state_dict, dict) and "state_dict" in state_dict:
+        state_dict = state_dict["state_dict"]
+    if not isinstance(state_dict, dict):
+        raise ValueError("Expected a tensor state_dict for the demo model")
 
     model.load_state_dict(state_dict)
 

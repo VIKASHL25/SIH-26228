@@ -63,6 +63,17 @@ class ModelHasher:
         return "unknown"
 
     @staticmethod
+    def validate_supported_path(model_path: str) -> str:
+        """Return the detected format and reject unsupported artifacts early."""
+        model_format = ModelHasher.detect_format(os.path.basename(model_path))
+        if model_format == "unknown":
+            raise ValueError(
+                "Unsupported model format. Expected .pt, .pth, .safetensors, "
+                ".onnx, .ts, or .torchscript."
+            )
+        return model_format
+
+    @staticmethod
     def extract_pytorch_metadata(
         model_path: str,
     ) -> tuple[Optional[int], Optional[int]]:
@@ -78,11 +89,14 @@ class ModelHasher:
         """
 
         try:
-            state = torch.load(
-                model_path,
-                map_location="cpu",
-                weights_only=False,
-            )
+            # weights_only avoids executing arbitrary pickled model objects.
+            # Older torch releases may not expose the argument; in that case
+            # metadata extraction is skipped rather than deserializing untrusted
+            # code.
+            try:
+                state = torch.load(model_path, map_location="cpu", weights_only=True)
+            except TypeError:
+                return None, None
 
             # Common checkpoint structures
             if isinstance(state, dict):
@@ -151,7 +165,7 @@ class ModelHasher:
         # 3. Detect model format
         # --------------------------------------------------
 
-        model_format = self.detect_format(file_name)
+        model_format = self.validate_supported_path(model_path)
 
         # --------------------------------------------------
         # 4. Calculate SHA-256

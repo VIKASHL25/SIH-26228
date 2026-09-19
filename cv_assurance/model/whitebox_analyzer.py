@@ -2,7 +2,7 @@ import os
 import torch
 import numpy as np
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class LayerStatistic(BaseModel):
     layer_name: str
@@ -22,6 +22,7 @@ class WhiteBoxAnalysisResult(BaseModel):
     parameter_anomaly_risk: str # "HIGH", "MEDIUM", "LOW"
     layer_stats: List[LayerStatistic]
     assessment_notes: str
+    activation_statistics: Dict[str, Dict[str, float]] = Field(default_factory=dict)
 
 class WhiteBoxAnalyzer:
     """Performs parameter distribution analysis & backdoor weight anomaly scans on PyTorch models."""
@@ -40,7 +41,14 @@ class WhiteBoxAnalyzer:
             )
 
         try:
-            state = torch.load(model_path, map_location='cpu', weights_only=False)
+            try:
+                state = torch.load(model_path, map_location='cpu', weights_only=True)
+            except TypeError:
+                return WhiteBoxAnalysisResult(
+                    model_path=model_path, access_granted=False, total_layers_analyzed=0,
+                    dead_neurons_ratio=0.0, weight_anomaly_score=0.0,
+                    parameter_anomaly_risk="UNAVAILABLE", layer_stats=[],
+                    assessment_notes="WHITE-BOX UNAVAILABLE: safe tensor-only loading is not supported by this torch version.")
             if isinstance(state, dict):
                 if 'model' in state:
                     state = state['model']
@@ -134,6 +142,39 @@ class WhiteBoxAnalyzer:
             weight_anomaly_score=weight_anomaly,
             parameter_anomaly_risk=parameter_risk,
             layer_stats=layer_stats,
-            assessment_notes=notes
+            assessment_notes="WHITE-BOX AVAILABLE: " + notes
         )
+
+    def analyze_model(self, model: torch.nn.Module, model_path: str = "<loaded-model>") -> WhiteBoxAnalysisResult:
+        """Analyze an already-loaded PyTorch model and collect activation statistics.
+
+        This API is deliberately separate from ``analyze_weights`` so callers can
+        load trusted artifacts under their own sandbox/policy.
+        """
+        if not isinstance(model, torch.nn.Module):
+            return WhiteBoxAnalysisResult(
+                model_path=model_path, access_granted=False, total_layers_analyzed=0,
+                dead_neurons_ratio=0.0, weight_anomaly_score=0.0,
+                parameter_anomaly_risk="UNAVAILABLE", layer_stats=[],
+                assessment_notes="WHITE-BOX UNAVAILABLE: object is not a PyTorch module.")
+        state = {name: parameter.detach().cpu() for name, parameter in model.named_parameters()}
+        stats = []
+        zero_count = total = 0
+        for name, parameter in state.items():
+            values = parameter.numpy()
+            elements = int(values.size); zeros = int(np.sum(values == 0))
+            zero_count += zeros; total += elements
+            std = float(np.std(values)); l2 = float(np.linalg.norm(values))
+            stats.append(LayerStatistic(layer_name=name, shape=list(values.shape),
+                mean_weight=round(float(np.mean(values)), 4), std_weight=round(std, 4),
+                l2_norm=round(l2, 4), zero_ratio=round(zeros / elements if elements else 0.0, 4),
+                anomaly_flag=bool(std > 1.0 or (zeros / elements if elements else 0.0) > 0.95)))
+        anomalous = sum(item.anomaly_flag for item in stats)
+        score = round(anomalous / len(stats), 4) if stats else 0.0
+        return WhiteBoxAnalysisResult(
+            model_path=model_path, access_granted=True, total_layers_analyzed=len(stats),
+            dead_neurons_ratio=round(zero_count / total if total else 0.0, 4),
+            weight_anomaly_score=score,
+            parameter_anomaly_risk="HIGH" if score >= 0.3 else "MEDIUM" if score >= 0.1 else "LOW",
+            layer_stats=stats, assessment_notes="WHITE-BOX AVAILABLE: in-memory parameter analysis completed.")
 

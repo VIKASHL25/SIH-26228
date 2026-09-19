@@ -20,7 +20,10 @@ class ModelIntegrityAssessment(BaseModel):
     # --------------------------------------------------
 
     sha256: str
+    reference_sha256: str
     reference_hash_match: bool
+    model_type: str
+    whitebox_available: bool
 
     # --------------------------------------------------
     # White-box analysis
@@ -53,6 +56,7 @@ class ModelIntegrityAssessment(BaseModel):
 
     parameter_anomaly_detected: bool
     trigger_behavior_detected: bool
+    backdoor_like_behavior: str
 
     # --------------------------------------------------
     # Final assessment
@@ -62,6 +66,9 @@ class ModelIntegrityAssessment(BaseModel):
     confidence: str
 
     disposition: str
+    severity: str
+    recommended_disposition: str
+    affected_layer: str
 
     findings: List[str] = Field(
         default_factory=list
@@ -361,10 +368,13 @@ class Module2Benchmark:
 
             # File integrity
             sha256=hash_result.sha256_digest,
+            reference_sha256=self.reference_hash,
 
             reference_hash_match=(
                 hash_result.reference_match is True
             ),
+            model_type=hash_result.format,
+            whitebox_available=whitebox_result.access_granted,
 
             # White-box
             weight_anomaly_score=(
@@ -417,6 +427,7 @@ class Module2Benchmark:
             trigger_behavior_detected=(
                 trigger_behavior
             ),
+            backdoor_like_behavior=("DETECTED" if trigger_behavior else "NOT_DETECTED"),
 
             # Final
             evidence_score=round(
@@ -427,6 +438,9 @@ class Module2Benchmark:
             confidence=confidence,
 
             disposition=disposition,
+            severity=("CRITICAL" if trigger_behavior or hash_result.reference_match is False else "INFO"),
+            recommended_disposition=("QUARANTINE" if trigger_behavior or hash_result.reference_match is False else "ACCEPT"),
+            affected_layer=next((item.layer_name for item in whitebox_result.layer_stats if item.anomaly_flag), "NONE"),
 
             findings=findings
         )
@@ -607,6 +621,25 @@ if __name__ == "__main__":
                 " -",
                 finding
             )
+
+    print("\n" + "=" * 70)
+    print("MODEL INTEGRITY FINDINGS")
+    print("=" * 70)
+    for name, result in results.items():
+        print("\nMODEL INTEGRITY FINDING")
+        print("Model:", result["model_path"])
+        print("Model Type:", result["model_type"])
+        print("Weight SHA-256:", result["sha256"])
+        print("Reference SHA-256:", result["reference_sha256"])
+        print("Hash Match:", "YES" if result["reference_hash_match"] else "NO")
+        print("Behavioral Deviation:", result["fingerprint_behavioral_deviation_score"])
+        print("Affected Layer:", result["affected_layer"])
+        print("White-box:", "AVAILABLE" if result["whitebox_available"] else "UNAVAILABLE")
+        print("Backdoor-like Behavior:", result["backdoor_like_behavior"])
+        print("Evidence:", " ".join(result["findings"]))
+        print("Confidence:", result["confidence"])
+        print("Severity:", result["severity"])
+        print("Disposition:", result["recommended_disposition"])
 
     # ==================================================
     # Save benchmark report

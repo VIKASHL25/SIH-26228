@@ -21,9 +21,16 @@ A model-agnostic, offline-capable computer vision integrity assurance framework 
 - **Contributor Risk Aggregation**: Aggregates sample-level flags by contributor/batch metadata to assign source-level risk profiles (`CRITICAL`, `HIGH`, `MEDIUM`, `CLEAN`).
 
 ### 2. Model Integrity Assessment (`cv_assurance.model`)
-- **Cryptographic Model Hash**: SHA-256 weight digests for PyTorch (`.pt`, `.pth`, `.safetensors`) and ONNX (`.onnx`).
-- **Behavioral Fingerprinting**: Prediction entropy, confidence distribution, per-class sensitivity, and calibration error.
-- **White-Box Parameter Inspection**: Layer-wise L2 norms, dead neuron activation ratios, and weight distribution anomaly scoring.
+- **SHA-256 Integrity Verification**: Streaming digests for `.pt`, `.pth`, `.safetensors`, `.onnx`, and TorchScript model artifacts, with trusted-reference comparison.
+- **Supported-Format Validation**: Rejects unknown model extensions before integrity assessment; verification never relies on filenames, timestamps, or metadata alone.
+- **Secure PyTorch Inspection**: Tensor-only checkpoint inspection where supported, reducing exposure to arbitrary deserialization during metadata and parameter analysis.
+- **Substitution & Tampering Detection**: Controlled modified-weight and substituted-model scenarios produce digest mismatches and integrity findings.
+- **Behavioral Fingerprinting**: Deterministic reference-battery comparison covering prediction agreement, confidence distributions, entropy, class behavior, and stability.
+- **White-Box Analysis**: Layer shapes, means, standard deviations, L2 norms, sparsity/dead-neuron ratios, anomaly scores, and affected-layer evidence when parameters are accessible.
+- **Black-Box Fallback**: Behavioral fingerprint adapters continue assessment when internal weights are unavailable and report white-box access as unavailable.
+- **Trigger Probing & Evidence Fusion**: Reproducible corner, blended, and spectral probes identify backdoor-like behavior under tested conditions; findings include evidence, confidence, severity, and `ACCEPT`/`REVIEW`/`QUARANTINE` disposition.
+
+Module 2 is completed and validated for the repository's controlled PyTorch benchmark. ONNX/SafeTensors hashing is supported; behavioral execution for arbitrary architectures requires a caller-supplied loader/runtime.
 
 ### 3. Distribution-Shift & Operational Drift (`cv_assurance.shift`)
 - **Domain Metrics**: Specific feature extraction across 4 operational dimensions:
@@ -34,13 +41,22 @@ A model-agnostic, offline-capable computer vision integrity assurance framework 
 - **Statistical Drift Detection**: Kolmogorov-Smirnov test & Wasserstein distance. Distinguishes natural operational drift from suspicious synthetic manipulation.
 
 ### 4. Inference Provenance & Cryptographic Binding (`cv_assurance.provenance`)
-- **Verifiable Binding**: Cryptographically binds `Input Image Hash` + `Model Weight Hash` + `Preprocessing Config` + `Output BBoxes/Predictions` + `Timestamp & Nonce`.
-- **HMAC Signatures & Verification**: Post-hoc verification engine that makes alteration, substitution, or replay attacks immediately detectable.
+- **Existing Component**: `crypto_binding.py` provides cryptographic binding and verification structures for input, model, configuration, output, timestamp, and nonce.
+- **Milestone Status**: The provenance component exists and is covered by current integration tests, but completing the broader Module 3 provenance workflow, replay policy, audit integration, and final end-to-end validation is outside this completion milestone.
 
 ### 5. AI Assurance Governance & Analyst Dashboard (`cv_assurance.governance` & `app/`)
-- **Human-Readable Findings**: Every flag includes title, reason, supporting evidence, confidence score, severity level (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`), affected asset, and recommended disposition (`ACCEPT`, `REVIEW`, `QUARANTINE`).
-- **Tamper-Evident Audit Trail**: SHA-256 audit digest for complete report reproducibility.
-- **Interactive Web Dashboard**: Modern glassmorphic web UI with live REST API backend.
+- **Existing Governance Infrastructure**: Finding/report schemas and a master assurance engine are present, including evidence, confidence, severity, affected asset, and recommended disposition fields.
+- **Existing Dashboard Components**: `app/server.py` and the static web UI expose the current assurance outputs.
+- **Milestone Status**: Governance and dashboard components remain available project infrastructure; final integration and blockchain/tamper-evident ledger completion are future work.
+
+### Project Status
+
+| Area | Status |
+| :--- | :--- |
+| Module 1 — Training-Data Integrity | **COMPLETED / VALIDATED** |
+| Module 2 — Model Integrity | **COMPLETED / VALIDATED** |
+| Module 3 — Provenance / Audit / Blockchain | **EXISTING COMPONENTS / FUTURE COMPLETION** |
+| Final End-to-End Integration | **NOT COMPLETED** |
 
 ---
 
@@ -257,14 +273,35 @@ Contributor Integrity Risk Profiles:
   - Findings: Natural operational environmental drift observed across 3 dimensions (illumination/season/terrain).
 ```
 
-### 7. Run Full Assurance Governance Analysis
+### 7. Run Module 2 Model Integrity Benchmark
+
+Run the controlled model-integrity scenarios against the deterministic reference image battery:
+
+```bash
+python -m cv_assurance.model.benchmark
+```
+
+This demonstrates trusted-model hashing, modified-weight and substitution detection, behavioral fingerprint comparison, white-box evidence, trigger probing, and evidence-oriented findings. It writes `reports/module_2_benchmark.json`.
+
+#### Module 2 Model Integrity Benchmark — Verified Results
+
+| Scenario | Hash Match | Behavioral Deviation | White-Box Evidence | Disposition |
+| :--- | :---: | ---: | :--- | :--- |
+| Clean | YES | 0.0000 | Available; no anomaly | ACCEPT |
+| Tampered weights | NO | 0.3486 | `conv1.weight` affected | QUARANTINE |
+| Behavior modified | NO | 0.9244 | `fc1.weight` affected | QUARANTINE |
+| Substituted | NO | 0.4438 | `conv1.weight` affected | QUARANTINE |
+
+The trigger probe is evidence of backdoor-like behavior only under the tested trigger battery; these controlled artifacts did not produce a separate positive trigger detection in the verified run.
+
+### 8. Run Full Assurance Governance Analysis
 Run master integrity evaluation on the benchmark:
 
 ```bash
 python -m cv_assurance.cli analyze --dataset data/dataset_manifest.json --ref-dataset data/reference/manifest.json --output-json data/report.json
 ```
 
-### 6. Launch Interactive Web Dashboard
+### 9. Launch Interactive Web Dashboard
 ```bash
 python app/server.py
 ```
@@ -274,11 +311,13 @@ Open `http://127.0.0.1:8000` in your web browser.
 
 ## 🧪 Verification & Unit Tests
 
-Run the complete test suite covering all baseline integrity modules and Module 1 attacks:
+Run the complete 31-test suite covering baseline integrity modules, Module 1 attack/regression coverage, governance integration, and dedicated Module 2 model-integrity tests:
 
 ```bash
 python -m unittest discover -s tests
 ```
+
+Verified status: **31 tests, 31 passed**.
 
 ---
 
@@ -307,9 +346,11 @@ SIH-26228/
 │   │   ├── backdoor_data.py       # Trigger patch & spectral backdoor detector
 │   │   └── contributor_risk.py    # Source/batch metadata risk aggregator
 │   ├── model/                     # Model Integrity Assessment
-│   │   ├── hasher.py              # SHA-256 digest & weight provenance
-│   │   ├── fingerprint.py         # Behavioral fingerprint & entropy evaluator
-│   │   └── whitebox_analyzer.py   # White-box parameter norm & sparsity analyzer
+│   │   ├── benchmark.py           # Controlled Module 2 scenarios & evidence findings
+│   │   ├── fingerprint.py         # Behavioral fingerprint & black-box adapter
+│   │   ├── hasher.py              # SHA-256 digest & format validation
+│   │   ├── model_loader.py        # Controlled demo PyTorch model loader
+│   │   └── whitebox_analyzer.py   # White-box parameter and anomaly analyzer
 │   ├── shift/                     # Distribution Shift & Environmental Drift
 │   │   ├── environmental.py       # Terrain, Illumination, Sensor, Season metrics
 │   │   └── distribution_test.py   # KS-test & Wasserstein drift detector
@@ -331,9 +372,14 @@ SIH-26228/
 │   ├── distribution_shift/
 │   └── ground_truth/
 ├── app/                           # Glassmorphic Web Dashboard & FastAPI server
+├── reports/
+│   └── module_2_benchmark.json    # Verified Module 2 benchmark evidence
+├── docs/
+│   └── MODULE_2_REPORT.md         # Module 2 methodology, results & limitations
 ├── tests/                         # Unit & Integration tests suite
 │   ├── test_all_integrity.py      # Baseline end-to-end assurance tests
-│   └── test_module1_attacks.py    # Module 1 Attack & Benchmark tests
+│   ├── test_module1_attacks.py    # Module 1 Attack & Benchmark tests
+│   └── test_module2_model_integrity.py # Module 2 hashing and white-box tests
 ├── requirements.txt
 └── README.md
 ```

@@ -70,6 +70,11 @@ class ModelFingerprinter:
 
     IMAGE_SIZE = (64, 64)
 
+    @staticmethod
+    def _get_samples(dataset: Any, num_eval: int) -> list:
+        samples = dataset.samples if hasattr(dataset, "samples") else dataset
+        return list(samples[:num_eval])
+
     def _preprocess_image(
         self,
         image_path: str
@@ -192,6 +197,69 @@ class ModelFingerprinter:
             "IngestedDataset sample or image-path string."
         )
 
+    def _fingerprint_loaded_model(
+        self, model: torch.nn.Module, dataset: Any, num_eval: int,
+        model_name: str, access_mode: str
+    ) -> BehavioralFingerprintResult:
+        """Fingerprint an already-loaded model; useful for controlled tests and black-box adapters."""
+        samples = self._get_samples(dataset, num_eval)
+        confidences, entropies, predictions = [], [], []
+        for sample in samples:
+            try:
+                pred, confidence, entropy, _ = self._predict(model, self._get_image_path(sample))
+                predictions.append(pred); confidences.append(confidence); entropies.append(entropy)
+            except (OSError, ValueError, TypeError, RuntimeError):
+                continue
+        if not predictions:
+            return BehavioralFingerprintResult(
+                model_name=model_name, access_mode=access_mode, total_eval_samples=0,
+                average_confidence=0.0, confidence_entropy=0.0, class_distribution={},
+                calibration_error_score=None, prediction_stability_score=0.0,
+                anomalous_behavior_detected=True,
+                findings_summary="Model inference failed on all evaluation samples.")
+        conf = np.asarray(confidences, dtype=float); entropy = np.asarray(entropies, dtype=float)
+        unique, counts = np.unique(predictions, return_counts=True)
+        distribution = {f"class_{int(k)}": round(float(v / len(predictions)), 4) for k, v in zip(unique, counts)}
+        largest = max(distribution.values())
+        anomaly = bool(float(conf.mean()) < 0.30 or (len(distribution) > 1 and largest > 0.95) or
+                       (float(entropy.mean()) < 0.30 and len(distribution) > 1))
+        summary = "Stable behavioral fingerprint on the reference battery."
+        if anomaly:
+            summary = "Low-confidence, collapsed, or low-entropy prediction behavior detected."
+        return BehavioralFingerprintResult(
+            model_name=model_name, access_mode=access_mode, total_eval_samples=len(predictions),
+            average_confidence=round(float(conf.mean()), 4), confidence_entropy=round(float(entropy.mean()), 4),
+            class_distribution=distribution, calibration_error_score=None,
+            prediction_stability_score=round(max(0.0, min(1.0, 1.0 - float(conf.std()))), 4),
+            anomalous_behavior_detected=anomaly, findings_summary=summary)
+
+    def fingerprint_callable(self, predict_fn: Any, dataset: Any, num_eval: int = 50,
+                             model_name: str = "black-box") -> BehavioralFingerprintResult:
+        """Fingerprint a prediction adapter without requiring weight access.
+
+        ``predict_fn`` receives a preprocessed ``[1,3,64,64]`` tensor and must
+        return logits or probabilities. This is the explicit black-box fallback.
+        """
+        class Adapter(torch.nn.Module):
+            def forward(self, x):
+                output = predict_fn(x)
+                return output if isinstance(output, torch.Tensor) else torch.as_tensor(output)
+        return self._fingerprint_loaded_model(Adapter(), dataset, num_eval, model_name, "black_box")
+
+    def fingerprint_dummy_or_callable(self, predict_fn: Any, dataset: Any,
+                                      num_eval: int = 50) -> BehavioralFingerprintResult:
+        """Backward-compatible governance adapter.
+
+        Governance historically called this method without a model object. In
+        that case use the repository's deterministic demo model; when a
+        predictor is supplied, use the explicit black-box path.
+        """
+        if predict_fn is not None:
+            return self.fingerprint_callable(predict_fn, dataset, num_eval)
+        demo_path = os.path.abspath(os.path.join(
+            os.path.dirname(__file__), "..", "..", "demo_assets", "sample_model.pt"))
+        return self.fingerprint_model(demo_path, dataset, num_eval, model_name="demo-reference")
+
     def fingerprint_model(
         self,
         model_path: str,
@@ -211,7 +279,7 @@ class ModelFingerprinter:
             model_path
         )
 
-        samples = dataset[:num_eval]
+        samples = self._get_samples(dataset, num_eval)
 
         if not samples:
 
@@ -496,7 +564,7 @@ class ModelFingerprinter:
             candidate_model_path
         )
 
-        samples = dataset[:num_eval]
+        samples = self._get_samples(dataset, num_eval)
 
         if not samples:
 
