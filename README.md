@@ -264,11 +264,110 @@ Run master integrity evaluation on the benchmark:
 python -m cv_assurance.cli analyze --dataset data/dataset_manifest.json --ref-dataset data/reference/manifest.json --output-json data/report.json
 ```
 
-### 6. Launch Interactive Web Dashboard
+### 8. Launch Interactive Web Dashboard
 ```bash
 python app/server.py
 ```
 Open `http://127.0.0.1:8000` in your web browser.
+
+---
+
+## 🔒 Module 3A — Inference Provenance & Cryptographic Output Integrity
+
+Module 3A provides air-gapped, post-hoc cryptographic provenance and output integrity assurance for computer vision inference pipelines. It eliminates downstream trust assumptions by mathematically binding the entire inference lifecycle into a tamper-evident, authenticated record.
+
+```
+Input Image Bytes (SHA-256)
+Model File (SHA-256 via ModelHasher)
+Preprocessing Configuration (Canonical JSON + SHA-256)
+Inference Predictions (Deterministic sorting + float normalization + SHA-256)
+UTC Timestamp + CSPRNG Nonce + Monotonic Sequence Number
+      ↓
+Canonical Binding Payload:
+  image_hash|model_hash|config_hash|predictions_json|timestamp|nonce|sequence_number
+      ↓
+SHA-256 Binding Digest
+      ↓
+HMAC-SHA256 Signature (Constant-Time Verification)
+      ↓
+Protected Inference Record (JSON)
+      ↓
+Verification & Replay Registry Audit
+      ↓
+[PASS]  /  [TAMPER DETECTED]  /  [REPLAY DETECTED]
+```
+
+### 1. What is Bound
+Each protected inference record binds:
+1. **Input Image Integrity**: SHA-256 hash calculated over the exact raw input image bytes.
+2. **Model Integrity**: Exact SHA-256 weight digest generated via the integrated Module 2 `ModelHasher`.
+3. **Preprocessing Configuration**: Full parameterization (`resolution`, `resize_method`, `normalization`, `channel_ordering`, `confidence_threshold`, `nms_iou_threshold`, `max_detections`, `version`), deterministically serialized and hashed.
+4. **Output Prediction Integrity**: Bounding boxes, class IDs, class names, and confidence scores, canonically sorted and float-normalized.
+5. **Freshness & Stream Metadata**: Monotonic sequence number, 128-bit CSPRNG nonce (`secrets.token_hex(16)`), and UTC timestamps.
+
+### 2. How Hashes Work
+- **Images & Models**: Chunked streaming SHA-256 hashes (`hashlib.sha256()`) process large inputs with constant memory overhead.
+- **Configurations**: Serialized into canonical JSON with strictly sorted keys and compact delimiters (`separators=(',', ':')`), preventing dictionary ordering artifacts from invalidating hashes.
+- **Predictions**: Sorted deterministically by `(category_id, category_name, -confidence, box)` with coordinates rounded to 4 decimals and confidence to 6 decimals, ensuring platform float jitter does not break verification.
+
+### 3. How HMAC Authentication Works
+- The canonical string `image_hash|model_hash|config_hash|preds_json|timestamp|nonce|seq_num` is hashed with SHA-256 to produce `binding_hash_sha256`.
+- The binding digest is signed using `hmac.new(secret_key, binding_hash, hashlib.sha256)`.
+- Verification utilizes `hmac.compare_digest()` to execute in constant time, preventing timing side-channel attacks.
+- **Air-Gapped Key Provisioning**: The secret key is loaded from the environment variable `CV_INFERENCE_SECRET_KEY` or constructor parameter. When unspecified, a fallback key is used and explicitly tagged as `DEMO_ONLY_AIRGAPPED_HMAC_SECRET_DO_NOT_USE_IN_PROD`.
+
+### 4. How Offline Replay Detection Works
+- Handled by `ReplayProtectionRegistry`, a local, air-gapped file-backed registry (JSON) with zero database server requirements.
+- Tracks `record_id`, `nonce`, `sequence_number`, `timestamp_utc`, and `binding_hash_sha256`.
+- An inference record that has already been accepted is flagged as `REPLAY DETECTED`, preventing adversaries from intercepting past valid detections and re-submitting them.
+
+### 5. CLI Usage Examples
+
+#### Create a Protected Record (`bind-inference`)
+```bash
+# Using model file (SHA-256 computed automatically via ModelHasher)
+python -m cv_assurance.cli bind-inference \
+  --image demo_assets/sample_model.pt \
+  --model demo_assets/sample_model.pt \
+  --predictions demo_preds.json \
+  --output-json protected_record.json
+```
+
+#### Verify a Record (`verify-inference`)
+```bash
+# Verify cryptographic binding and register in replay registry
+python -m cv_assurance.cli verify-inference \
+  --record-json protected_record.json \
+  --image demo_assets/sample_model.pt \
+  --model demo_assets/sample_model.pt \
+  --registry data/replay_registry.json \
+  --register-on-success
+```
+
+#### Verify an Inference Chain (`verify-inference-chain`)
+```bash
+# Verify monotonic sequence ordering and cryptographic validity across a batch
+python -m cv_assurance.cli verify-inference-chain \
+  --records-json chain_records.json \
+  --registry data/replay_registry.json
+```
+
+### 6. Detectable Attack Vectors
+| Threat Scenario | Tampering Mechanism | Assurance Outcome | Violated Fields |
+| :--- | :--- | :---: | :--- |
+| **Image Alteration** | Adversarial patch, noise injection, or image swap | `FAIL` | `image_hash_sha256` |
+| **Model Substitution** | Trojaned or backdoored weight file substituted | `FAIL` | `model_digest_sha256` |
+| **Preprocessing Bypass** | Threshold lowered to induce false alarms | `FAIL` | `preprocessing_config` |
+| **Prediction Forgery** | Confidence boosted, box moved, or label changed | `FAIL` | `predictions` |
+| **Timestamp Manipulation** | Backdating or future-dating inference records | `FAIL` | `timestamp_utc` |
+| **Nonce Reuse Attack** | Submitting multiple inferences under one nonce | `FAIL` | `nonce`, `replay_detected` |
+| **Sequence Rollback** | Out-of-order execution or deleted stream items | `FAIL` | `sequence_number` |
+| **Signature Forgery** | Altering predictions without private HMAC key | `FAIL` | `binding_hash_sha256`, `hmac_signature` |
+| **Replay Attack** | Resubmitting previously captured valid record | `FAIL` | `replay_detected` |
+
+### 7. Limitations
+1. **Host-Level Compromise**: Provenance signatures prove that output was generated by the specified model from the specified input image under the recorded configuration. If the inference host itself is compromised at runtime, adversarial code could theoretically sign incorrect results using the local host key.
+2. **Key Protection**: The HMAC secret key must be provisioned securely into the air-gapped node (e.g. via hardware HSM or environment variable).
 
 ---
 
