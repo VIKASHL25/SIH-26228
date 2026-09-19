@@ -22,7 +22,11 @@ class IngestedSample(BaseModel):
     boxes: List[BoundingBox] = Field(default_factory=list)
     contributor_id: str = "unknown"
     batch_id: str = "default_batch"
-    format: str = "coco" # "coco" or "yolo"
+    format: str = "coco" # "coco", "yolo", "visdrone", "manifest"
+    is_attacked: bool = False
+    attack_type: Optional[str] = None
+    is_shifted: bool = False
+    shift_type: Optional[str] = None
 
 class IngestedDataset(BaseModel):
     name: str
@@ -34,7 +38,7 @@ class IngestedDataset(BaseModel):
     total_annotations: int
 
 class DatasetIngester:
-    """Ingests COCO or YOLO format datasets into a unified dataset structure."""
+    """Ingests COCO, YOLO, VisDrone, or Benchmark Manifest datasets into a unified dataset structure."""
     
     @staticmethod
     def ingest_coco(annotation_json_path: str, images_dir: str, dataset_name: str = "COCO_Dataset") -> IngestedDataset:
@@ -83,6 +87,9 @@ class DatasetIngester:
             # Extract contributor / batch metadata if available
             contributor = img.get('contributor', img.get('source_contributor', 'contributor_alpha'))
             batch = img.get('batch_id', img.get('batch', 'batch_01'))
+            is_attacked = img.get('is_attacked', False)
+            attack_type = img.get('attack_type', None)
+            is_shifted = img.get('is_shifted', False)
             
             samples.append(IngestedSample(
                 sample_id=str(img_id),
@@ -93,7 +100,10 @@ class DatasetIngester:
                 boxes=boxes,
                 contributor_id=contributor,
                 batch_id=batch,
-                format="coco"
+                format="coco",
+                is_attacked=is_attacked,
+                attack_type=attack_type,
+                is_shifted=is_shifted
             ))
             
         return IngestedDataset(
@@ -104,6 +114,79 @@ class DatasetIngester:
             samples=samples,
             total_samples=len(samples),
             total_annotations=total_annotations
+        )
+
+    @classmethod
+    def ingest_manifest(cls, manifest_path: str) -> IngestedDataset:
+        """Ingests a GroundTruthManifest JSON file."""
+        p = Path(manifest_path)
+        if not p.exists():
+            raise FileNotFoundError(f"Manifest not found: {manifest_path}")
+
+        with open(p, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        base_dir = p.parent
+        samples_data = data.get("samples", [])
+        categories: Dict[int, str] = {}
+        samples: List[IngestedSample] = []
+        total_ann = 0
+
+        for s in samples_data:
+            c_img = s.get("current_image", "")
+            img_path = Path(c_img) if Path(c_img).is_absolute() else base_dir / c_img
+            if not img_path.exists():
+                candidates = [
+                    base_dir.parent / c_img,
+                    base_dir / "images" / Path(c_img).name,
+                    base_dir / Path(c_img).name,
+                    Path.cwd() / c_img,
+                    Path.cwd() / "data" / c_img,
+                ]
+                for cand in candidates:
+                    if cand.exists():
+                        img_path = cand
+                        break
+
+            boxes: List[BoundingBox] = []
+            for b in s.get("boxes", []):
+                cat_id = b.get("category_id", 1)
+                cat_name = b.get("category_name", f"class_{cat_id}")
+                categories[cat_id] = cat_name
+                boxes.append(BoundingBox(
+                    x=float(b.get("x", 0)),
+                    y=float(b.get("y", 0)),
+                    width=float(b.get("width", 0)),
+                    height=float(b.get("height", 0)),
+                    category_id=cat_id,
+                    category_name=cat_name
+                ))
+            total_ann += len(boxes)
+
+            samples.append(IngestedSample(
+                sample_id=str(s.get("sample_id", "")),
+                image_path=str(img_path),
+                file_name=Path(c_img).name,
+                width=640,
+                height=640,
+                boxes=boxes,
+                contributor_id=s.get("contributor", "unknown"),
+                batch_id=s.get("batch_id", "default_batch"),
+                format="manifest",
+                is_attacked=s.get("is_attacked", False),
+                attack_type=s.get("attack_type"),
+                is_shifted=s.get("is_shifted", False),
+                shift_type=s.get("shift_type")
+            ))
+
+        return IngestedDataset(
+            name=data.get("dataset_name", "Manifest_Dataset"),
+            format="manifest",
+            root_dir=str(base_dir),
+            categories=categories,
+            samples=samples,
+            total_samples=len(samples),
+            total_annotations=total_ann
         )
         
     @staticmethod
@@ -143,7 +226,6 @@ class DatasetIngester:
         for idx, img_path in enumerate(image_paths):
             file_name = os.path.basename(img_path)
             # Find corresponding label file
-            # e.g., image: images/img01.jpg -> label: labels/img01.txt
             base_name = os.path.splitext(file_name)[0]
             parent_dir = os.path.dirname(img_path)
             label_dir = parent_dir.replace("images", "labels")
@@ -171,7 +253,6 @@ class DatasetIngester:
                             ))
                             
             total_annotations += len(boxes)
-            # Assign synthetic contributor/batch based on parent directory name or index grouping
             contributor = "contributor_alpha" if idx % 2 == 0 else "contributor_beta"
             batch = f"batch_{(idx // 50) + 1:02d}"
             
@@ -200,11 +281,34 @@ class DatasetIngester:
     @classmethod
     def auto_ingest(cls, path: str) -> IngestedDataset:
         if os.path.isfile(path) and path.endswith('.json'):
+            # Check if GroundTruthManifest schema
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    preview = json.load(f)
+                if "samples" in preview and any("current_image" in s for s in preview.get("samples", [])):
+                    return cls.ingest_manifest(path)
+            except Exception:
+                pass
             img_dir = os.path.dirname(path)
             return cls.ingest_coco(path, img_dir)
         elif os.path.isdir(path):
+            # Check if VisDrone layout (annotations/*.txt with comma separated lines)
+            ann_dir = os.path.join(path, "annotations")
+            if os.path.isdir(ann_dir):
+                from .visdrone import VisDroneIngester
+                txt_files = glob.glob(os.path.join(ann_dir, "*.txt"))
+                if txt_files:
+                    return VisDroneIngester.ingest_visdrone(path)
             json_files = glob.glob(os.path.join(path, "*.json"))
             if json_files:
+                for jf in json_files:
+                    try:
+                        with open(jf, 'r', encoding='utf-8') as f:
+                            preview = json.load(f)
+                        if "samples" in preview and any("current_image" in s for s in preview.get("samples", [])):
+                            return cls.ingest_manifest(jf)
+                    except Exception:
+                        continue
                 return cls.ingest_coco(json_files[0], path)
             return cls.ingest_yolo(path)
         else:

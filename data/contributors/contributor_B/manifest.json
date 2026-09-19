@@ -1,0 +1,506 @@
+{
+  "dataset_name": "VisDrone_contributor_B_Submissions",
+  "dataset_version": "1.1.0",
+  "seed": 42,
+  "total_samples": 8,
+  "attack_summary": {},
+  "contributor_summary": {},
+  "samples": [
+    {
+      "sample_id": "sample_00029",
+      "original_image": "reference\\images\\ref_00073.jpg",
+      "current_image": "contributors\\contributor_B\\images\\sample_00029.jpg",
+      "contributor": "contributor_B",
+      "batch_id": "batch_B_01",
+      "attack_type": "systematic_mislabel",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "motor",
+      "original_label_id": 10,
+      "modified_label": "bicycle",
+      "modified_label_id": 3,
+      "boxes": [
+        {
+          "x": 92.0,
+          "y": 417.0,
+          "width": 15.0,
+          "height": 30.0,
+          "category_id": 3,
+          "category_name": "bicycle"
+        },
+        {
+          "x": 419.0,
+          "y": 130.0,
+          "width": 15.0,
+          "height": 30.0,
+          "category_id": 3,
+          "category_name": "bicycle"
+        },
+        {
+          "x": 535.0,
+          "y": 80.0,
+          "width": 30.0,
+          "height": 60.0,
+          "category_id": 3,
+          "category_name": "bicycle"
+        },
+        {
+          "x": 90.0,
+          "y": 443.0,
+          "width": 40.0,
+          "height": 80.0,
+          "category_id": 3,
+          "category_name": "bicycle"
+        }
+      ],
+      "parameters": {
+        "strategy": "semantic_confusion_matrix",
+        "confusion_mapping": {
+          "1": 2,
+          "2": 1,
+          "3": 10,
+          "4": 5,
+          "5": 4,
+          "6": 9,
+          "7": 8,
+          "8": 7,
+          "9": 6,
+          "10": 3
+        },
+        "seed": 62
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00030",
+      "original_image": "reference\\images\\ref_00059.jpg",
+      "current_image": "contributors\\contributor_B\\images\\sample_00030.jpg",
+      "contributor": "contributor_B",
+      "batch_id": "batch_B_01",
+      "attack_type": "label_flip",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "car",
+      "original_label_id": 4,
+      "modified_label": "truck",
+      "modified_label_id": 6,
+      "boxes": [
+        {
+          "x": 185.0,
+          "y": 36.0,
+          "width": 30.0,
+          "height": 60.0,
+          "category_id": 6,
+          "category_name": "truck"
+        },
+        {
+          "x": 172.0,
+          "y": 523.0,
+          "width": 15.0,
+          "height": 30.0,
+          "category_id": 6,
+          "category_name": "truck"
+        },
+        {
+          "x": 115.0,
+          "y": 166.0,
+          "width": 40.0,
+          "height": 80.0,
+          "category_id": 6,
+          "category_name": "truck"
+        },
+        {
+          "x": 330.0,
+          "y": 259.0,
+          "width": 30.0,
+          "height": 60.0,
+          "category_id": 6,
+          "category_name": "truck"
+        }
+      ],
+      "parameters": {
+        "strategy": "uniform_random_flip",
+        "available_classes": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "seed": 52
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00031",
+      "original_image": "reference\\images\\ref_00047.jpg",
+      "current_image": "contributors\\contributor_B\\images\\sample_00031.jpg",
+      "contributor": "contributor_B",
+      "batch_id": "batch_B_01",
+      "attack_type": "systematic_mislabel",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "bus",
+      "original_label_id": 9,
+      "modified_label": "truck",
+      "modified_label_id": 6,
+      "boxes": [
+        {
+          "x": 524.0,
+          "y": 116.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 6,
+          "category_name": "truck"
+        },
+        {
+          "x": 554.0,
+          "y": 366.0,
+          "width": 40.0,
+          "height": 80.0,
+          "category_id": 6,
+          "category_name": "truck"
+        }
+      ],
+      "parameters": {
+        "strategy": "semantic_confusion_matrix",
+        "confusion_mapping": {
+          "1": 2,
+          "2": 1,
+          "3": 10,
+          "4": 5,
+          "5": 4,
+          "6": 9,
+          "7": 8,
+          "8": 7,
+          "9": 6,
+          "10": 3
+        },
+        "seed": 62
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00032",
+      "original_image": "reference\\images\\ref_00079.jpg",
+      "current_image": "contributors\\contributor_B\\images\\sample_00032.jpg",
+      "contributor": "contributor_B",
+      "batch_id": "batch_B_01",
+      "attack_type": "label_flip",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "car",
+      "original_label_id": 4,
+      "modified_label": "awning-tricycle",
+      "modified_label_id": 8,
+      "boxes": [
+        {
+          "x": 100.0,
+          "y": 410.0,
+          "width": 30.0,
+          "height": 60.0,
+          "category_id": 8,
+          "category_name": "awning-tricycle"
+        },
+        {
+          "x": 145.0,
+          "y": 380.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 8,
+          "category_name": "awning-tricycle"
+        },
+        {
+          "x": 90.0,
+          "y": 589.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 8,
+          "category_name": "awning-tricycle"
+        }
+      ],
+      "parameters": {
+        "strategy": "uniform_random_flip",
+        "available_classes": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "seed": 52
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00033",
+      "original_image": "reference\\images\\ref_00016.jpg",
+      "current_image": "contributors\\contributor_B\\images\\sample_00033.jpg",
+      "contributor": "contributor_B",
+      "batch_id": "batch_B_01",
+      "attack_type": "systematic_mislabel",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "motor",
+      "original_label_id": 10,
+      "modified_label": "bicycle",
+      "modified_label_id": 3,
+      "boxes": [
+        {
+          "x": 196.0,
+          "y": 391.0,
+          "width": 15.0,
+          "height": 30.0,
+          "category_id": 3,
+          "category_name": "bicycle"
+        },
+        {
+          "x": 207.0,
+          "y": 279.0,
+          "width": 40.0,
+          "height": 80.0,
+          "category_id": 3,
+          "category_name": "bicycle"
+        },
+        {
+          "x": 441.0,
+          "y": 290.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 3,
+          "category_name": "bicycle"
+        },
+        {
+          "x": 31.0,
+          "y": 306.0,
+          "width": 30.0,
+          "height": 60.0,
+          "category_id": 3,
+          "category_name": "bicycle"
+        },
+        {
+          "x": 78.0,
+          "y": 451.0,
+          "width": 40.0,
+          "height": 80.0,
+          "category_id": 3,
+          "category_name": "bicycle"
+        }
+      ],
+      "parameters": {
+        "strategy": "semantic_confusion_matrix",
+        "confusion_mapping": {
+          "1": 2,
+          "2": 1,
+          "3": 10,
+          "4": 5,
+          "5": 4,
+          "6": 9,
+          "7": 8,
+          "8": 7,
+          "9": 6,
+          "10": 3
+        },
+        "seed": 62
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00034",
+      "original_image": "reference\\images\\ref_00028.jpg",
+      "current_image": "contributors\\contributor_B\\images\\sample_00034.jpg",
+      "contributor": "contributor_B",
+      "batch_id": "batch_B_01",
+      "attack_type": "label_flip",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "pedestrian",
+      "original_label_id": 1,
+      "modified_label": "tricycle",
+      "modified_label_id": 7,
+      "boxes": [
+        {
+          "x": 178.0,
+          "y": 162.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 7,
+          "category_name": "tricycle"
+        },
+        {
+          "x": 564.0,
+          "y": 575.0,
+          "width": 15.0,
+          "height": 30.0,
+          "category_id": 7,
+          "category_name": "tricycle"
+        },
+        {
+          "x": 82.0,
+          "y": 443.0,
+          "width": 15.0,
+          "height": 30.0,
+          "category_id": 7,
+          "category_name": "tricycle"
+        },
+        {
+          "x": 205.0,
+          "y": 393.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 7,
+          "category_name": "tricycle"
+        },
+        {
+          "x": 344.0,
+          "y": 267.0,
+          "width": 40.0,
+          "height": 80.0,
+          "category_id": 7,
+          "category_name": "tricycle"
+        }
+      ],
+      "parameters": {
+        "strategy": "uniform_random_flip",
+        "available_classes": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "seed": 52
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00035",
+      "original_image": "reference\\images\\ref_00042.jpg",
+      "current_image": "contributors\\contributor_B\\images\\sample_00035.jpg",
+      "contributor": "contributor_B",
+      "batch_id": "batch_B_01",
+      "attack_type": "systematic_mislabel",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "pedestrian",
+      "original_label_id": 1,
+      "modified_label": "people",
+      "modified_label_id": 2,
+      "boxes": [
+        {
+          "x": 427.0,
+          "y": 257.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 2,
+          "category_name": "people"
+        },
+        {
+          "x": 561.0,
+          "y": 169.0,
+          "width": 15.0,
+          "height": 30.0,
+          "category_id": 2,
+          "category_name": "people"
+        }
+      ],
+      "parameters": {
+        "strategy": "semantic_confusion_matrix",
+        "confusion_mapping": {
+          "1": 2,
+          "2": 1,
+          "3": 10,
+          "4": 5,
+          "5": 4,
+          "6": 9,
+          "7": 8,
+          "8": 7,
+          "9": 6,
+          "10": 3
+        },
+        "seed": 62
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00036",
+      "original_image": "reference\\images\\ref_00027.jpg",
+      "current_image": "contributors\\contributor_B\\images\\sample_00036.jpg",
+      "contributor": "contributor_B",
+      "batch_id": "batch_B_01",
+      "attack_type": "label_flip",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "motor",
+      "original_label_id": 10,
+      "modified_label": "tricycle",
+      "modified_label_id": 7,
+      "boxes": [
+        {
+          "x": 464.0,
+          "y": 573.0,
+          "width": 15.0,
+          "height": 30.0,
+          "category_id": 7,
+          "category_name": "tricycle"
+        },
+        {
+          "x": 420.0,
+          "y": 45.0,
+          "width": 15.0,
+          "height": 30.0,
+          "category_id": 7,
+          "category_name": "tricycle"
+        }
+      ],
+      "parameters": {
+        "strategy": "uniform_random_flip",
+        "available_classes": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "seed": 52
+      },
+      "source": "VisDrone"
+    }
+  ]
+}

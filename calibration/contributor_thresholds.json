@@ -1,0 +1,6 @@
+{
+  "critical_risk_cutoff": 0.5,
+  "high_risk_cutoff": 0.28,
+  "medium_risk_cutoff": 0.12,
+  "min_sample_volume_significance": 4
+}

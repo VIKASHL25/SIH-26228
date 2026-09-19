@@ -1,0 +1,581 @@
+{
+  "dataset_name": "VisDrone_contributor_C_Submissions",
+  "dataset_version": "1.1.0",
+  "seed": 42,
+  "total_samples": 12,
+  "attack_summary": {},
+  "contributor_summary": {},
+  "samples": [
+    {
+      "sample_id": "sample_00037",
+      "original_image": "reference\\images\\ref_00049.jpg",
+      "current_image": "contributors\\contributor_C\\images\\sample_00037.jpg",
+      "contributor": "contributor_C",
+      "batch_id": "batch_C_01",
+      "attack_type": "near_duplicate_flood",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "bus",
+      "original_label_id": 9,
+      "modified_label": "bus",
+      "modified_label_id": 9,
+      "boxes": [
+        {
+          "x": 193.0,
+          "y": 129.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 9,
+          "category_name": "bus"
+        },
+        {
+          "x": 504.0,
+          "y": 101.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 9,
+          "category_name": "bus"
+        },
+        {
+          "x": 565.0,
+          "y": 157.0,
+          "width": 30.0,
+          "height": 60.0,
+          "category_id": 4,
+          "category_name": "car"
+        },
+        {
+          "x": 264.0,
+          "y": 59.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        },
+        {
+          "x": 63.0,
+          "y": 133.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        }
+      ],
+      "parameters": {
+        "transformation": "jpeg_compression",
+        "original_sample_id": "ref_00049",
+        "seed": 72,
+        "jpeg_quality": 54
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00038",
+      "original_image": "reference\\images\\ref_00049.jpg",
+      "current_image": "contributors\\contributor_C\\images\\sample_00038.jpg",
+      "contributor": "contributor_C",
+      "batch_id": "batch_C_01",
+      "attack_type": "near_duplicate_flood",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "bus",
+      "original_label_id": 9,
+      "modified_label": "bus",
+      "modified_label_id": 9,
+      "boxes": [
+        {
+          "x": 193.0,
+          "y": 129.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 9,
+          "category_name": "bus"
+        },
+        {
+          "x": 504.0,
+          "y": 101.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 9,
+          "category_name": "bus"
+        },
+        {
+          "x": 565.0,
+          "y": 157.0,
+          "width": 30.0,
+          "height": 60.0,
+          "category_id": 4,
+          "category_name": "car"
+        },
+        {
+          "x": 264.0,
+          "y": 59.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        },
+        {
+          "x": 63.0,
+          "y": 133.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        }
+      ],
+      "parameters": {
+        "transformation": "brightness_contrast",
+        "original_sample_id": "ref_00049",
+        "seed": 73,
+        "contrast_alpha": 1.043,
+        "brightness_beta": -10
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00039",
+      "original_image": "reference\\images\\ref_00025.jpg",
+      "current_image": "contributors\\contributor_C\\images\\sample_00039.jpg",
+      "contributor": "contributor_C",
+      "batch_id": "batch_C_01",
+      "attack_type": "near_duplicate_flood",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "pedestrian",
+      "original_label_id": 1,
+      "modified_label": "pedestrian",
+      "modified_label_id": 1,
+      "boxes": [
+        {
+          "x": 475.0,
+          "y": 96.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        },
+        {
+          "x": 310.0,
+          "y": 181.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        },
+        {
+          "x": 513.0,
+          "y": 408.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 9,
+          "category_name": "bus"
+        },
+        {
+          "x": 382.0,
+          "y": 567.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        },
+        {
+          "x": 521.0,
+          "y": 396.0,
+          "width": 30.0,
+          "height": 60.0,
+          "category_id": 4,
+          "category_name": "car"
+        }
+      ],
+      "parameters": {
+        "transformation": "gaussian_blur",
+        "original_sample_id": "ref_00025",
+        "seed": 74,
+        "kernel_size": 3
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00040",
+      "original_image": "reference\\images\\ref_00025.jpg",
+      "current_image": "contributors\\contributor_C\\images\\sample_00040.jpg",
+      "contributor": "contributor_C",
+      "batch_id": "batch_C_01",
+      "attack_type": "near_duplicate_flood",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "pedestrian",
+      "original_label_id": 1,
+      "modified_label": "pedestrian",
+      "modified_label_id": 1,
+      "boxes": [
+        {
+          "x": 475.0,
+          "y": 96.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        },
+        {
+          "x": 310.0,
+          "y": 181.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        },
+        {
+          "x": 513.0,
+          "y": 408.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 9,
+          "category_name": "bus"
+        },
+        {
+          "x": 382.0,
+          "y": 567.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        },
+        {
+          "x": 521.0,
+          "y": 396.0,
+          "width": 30.0,
+          "height": 60.0,
+          "category_id": 4,
+          "category_name": "car"
+        }
+      ],
+      "parameters": {
+        "transformation": "jpeg_compression",
+        "original_sample_id": "ref_00025",
+        "seed": 75,
+        "jpeg_quality": 49
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00041",
+      "original_image": "reference\\images\\ref_00044.jpg",
+      "current_image": "contributors\\contributor_C\\images\\sample_00041.jpg",
+      "contributor": "contributor_C",
+      "batch_id": "batch_C_01",
+      "attack_type": "near_duplicate_flood",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "pedestrian",
+      "original_label_id": 1,
+      "modified_label": "pedestrian",
+      "modified_label_id": 1,
+      "boxes": [
+        {
+          "x": 120.0,
+          "y": 263.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        },
+        {
+          "x": 169.0,
+          "y": 220.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        },
+        {
+          "x": 521.0,
+          "y": 222.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 9,
+          "category_name": "bus"
+        }
+      ],
+      "parameters": {
+        "transformation": "brightness_contrast",
+        "original_sample_id": "ref_00044",
+        "seed": 76,
+        "contrast_alpha": 0.943,
+        "brightness_beta": -13
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00042",
+      "original_image": "reference\\images\\ref_00044.jpg",
+      "current_image": "contributors\\contributor_C\\images\\sample_00042.jpg",
+      "contributor": "contributor_C",
+      "batch_id": "batch_C_01",
+      "attack_type": "near_duplicate_flood",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "pedestrian",
+      "original_label_id": 1,
+      "modified_label": "pedestrian",
+      "modified_label_id": 1,
+      "boxes": [
+        {
+          "x": 120.0,
+          "y": 263.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        },
+        {
+          "x": 169.0,
+          "y": 220.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        },
+        {
+          "x": 521.0,
+          "y": 222.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 9,
+          "category_name": "bus"
+        }
+      ],
+      "parameters": {
+        "transformation": "gaussian_blur",
+        "original_sample_id": "ref_00044",
+        "seed": 77,
+        "kernel_size": 5
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00043",
+      "original_image": "reference\\images\\ref_00078.jpg",
+      "current_image": "contributors\\contributor_C\\images\\sample_00043.jpg",
+      "contributor": "contributor_C",
+      "batch_id": "batch_C_01",
+      "attack_type": "near_duplicate_flood",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "motor",
+      "original_label_id": 10,
+      "modified_label": "motor",
+      "modified_label_id": 10,
+      "boxes": [
+        {
+          "x": 594.0,
+          "y": 129.0,
+          "width": 15.0,
+          "height": 30.0,
+          "category_id": 10,
+          "category_name": "motor"
+        },
+        {
+          "x": 495.0,
+          "y": 128.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 9,
+          "category_name": "bus"
+        },
+        {
+          "x": 137.0,
+          "y": 586.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        },
+        {
+          "x": 146.0,
+          "y": 173.0,
+          "width": 30.0,
+          "height": 60.0,
+          "category_id": 4,
+          "category_name": "car"
+        },
+        {
+          "x": 235.0,
+          "y": 94.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        }
+      ],
+      "parameters": {
+        "transformation": "jpeg_compression",
+        "original_sample_id": "ref_00078",
+        "seed": 78,
+        "jpeg_quality": 35
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00044",
+      "original_image": "reference\\images\\ref_00078.jpg",
+      "current_image": "contributors\\contributor_C\\images\\sample_00044.jpg",
+      "contributor": "contributor_C",
+      "batch_id": "batch_C_01",
+      "attack_type": "near_duplicate_flood",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "motor",
+      "original_label_id": 10,
+      "modified_label": "motor",
+      "modified_label_id": 10,
+      "boxes": [
+        {
+          "x": 594.0,
+          "y": 129.0,
+          "width": 15.0,
+          "height": 30.0,
+          "category_id": 10,
+          "category_name": "motor"
+        },
+        {
+          "x": 495.0,
+          "y": 128.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 9,
+          "category_name": "bus"
+        },
+        {
+          "x": 137.0,
+          "y": 586.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        },
+        {
+          "x": 146.0,
+          "y": 173.0,
+          "width": 30.0,
+          "height": 60.0,
+          "category_id": 4,
+          "category_name": "car"
+        },
+        {
+          "x": 235.0,
+          "y": 94.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        }
+      ],
+      "parameters": {
+        "transformation": "brightness_contrast",
+        "original_sample_id": "ref_00078",
+        "seed": 79,
+        "contrast_alpha": 1.0,
+        "brightness_beta": -10
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00045",
+      "original_image": "reference\\images\\ref_00058.jpg",
+      "current_image": "contributors\\contributor_C\\images\\sample_00045.jpg",
+      "contributor": "contributor_C",
+      "batch_id": "batch_C_01",
+      "attack_type": "ood_insertion",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "motor",
+      "original_label_id": 10,
+      "modified_label": "out_of_distribution",
+      "modified_label_id": -1,
+      "boxes": [],
+      "parameters": {
+        "ood_domain": "thermal_radiometry_pattern",
+        "is_operational_anomaly": 1,
+        "seed": 82
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00046",
+      "original_image": "reference\\images\\ref_00012.jpg",
+      "current_image": "contributors\\contributor_C\\images\\sample_00046.jpg",
+      "contributor": "contributor_C",
+      "batch_id": "batch_C_01",
+      "attack_type": "ood_insertion",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "motor",
+      "original_label_id": 10,
+      "modified_label": "out_of_distribution",
+      "modified_label_id": -1,
+      "boxes": [],
+      "parameters": {
+        "ood_domain": "deep_space_astronomy",
+        "is_operational_anomaly": 1,
+        "seed": 82
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00047",
+      "original_image": "reference\\images\\ref_00033.jpg",
+      "current_image": "contributors\\contributor_C\\images\\sample_00047.jpg",
+      "contributor": "contributor_C",
+      "batch_id": "batch_C_01",
+      "attack_type": "ood_insertion",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "van",
+      "original_label_id": 5,
+      "modified_label": "out_of_distribution",
+      "modified_label_id": -1,
+      "boxes": [],
+      "parameters": {
+        "ood_domain": "deep_space_astronomy",
+        "is_operational_anomaly": 1,
+        "seed": 82
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00048",
+      "original_image": "reference\\images\\ref_00076.jpg",
+      "current_image": "contributors\\contributor_C\\images\\sample_00048.jpg",
+      "contributor": "contributor_C",
+      "batch_id": "batch_C_01",
+      "attack_type": "ood_insertion",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "van",
+      "original_label_id": 5,
+      "modified_label": "out_of_distribution",
+      "modified_label_id": -1,
+      "boxes": [],
+      "parameters": {
+        "ood_domain": "thermal_radiometry_pattern",
+        "is_operational_anomaly": 1,
+        "seed": 82
+      },
+      "source": "VisDrone"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "duplicate": {
+    "hash_candidate_threshold": 6,
+    "ssim_confirmation_threshold": 0.82,
+    "normalized_mae_threshold": 0.15,
+    "flooding_ratio_warning": 0.1,
+    "flooding_ratio_critical": 0.25
+  },
+  "label": {
+    "knn_neighbors": 5,
+    "min_consensus_threshold": 0.6,
+    "centroid_distance_margin": 0.03,
+    "high_confidence_consensus": 0.8
+  },
+  "ood": {
+    "contamination_rate": 0.05,
+    "anomaly_score_threshold": 0.65
+  },
+  "trigger": {
+    "corner_variance_threshold": 1000.0,
+    "corner_contrast_threshold": 35.0,
+    "fft_peak_prominence_zscore": 6.12,
+    "fft_high_freq_ratio_zscore": 2.5,
+    "watermark_residual_threshold": 0.18
+  },
+  "contributor": {
+    "critical_risk_cutoff": 0.5,
+    "high_risk_cutoff": 0.28,
+    "medium_risk_cutoff": 0.12,
+    "min_sample_volume_significance": 4
+  },
+  "calibration_dataset_name": "VisDrone_Clean_Calibration",
+  "calibration_sample_count": 20
+}

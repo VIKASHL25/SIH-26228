@@ -1,0 +1,4 @@
+{
+  "contamination_rate": 0.05,
+  "anomaly_score_threshold": 0.65
+}

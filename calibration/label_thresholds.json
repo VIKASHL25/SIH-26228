@@ -1,0 +1,6 @@
+{
+  "knn_neighbors": 5,
+  "min_consensus_threshold": 0.6,
+  "centroid_distance_margin": 0.03,
+  "high_confidence_consensus": 0.8
+}

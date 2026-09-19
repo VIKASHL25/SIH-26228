@@ -1,0 +1,7 @@
+{
+  "corner_variance_threshold": 1000.0,
+  "corner_contrast_threshold": 35.0,
+  "fft_peak_prominence_zscore": 6.12,
+  "fft_high_freq_ratio_zscore": 2.5,
+  "watermark_residual_threshold": 0.18
+}

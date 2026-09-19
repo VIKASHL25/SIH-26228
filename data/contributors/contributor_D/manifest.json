@@ -1,0 +1,455 @@
+{
+  "dataset_name": "VisDrone_contributor_D_Submissions",
+  "dataset_version": "1.1.0",
+  "seed": 42,
+  "total_samples": 8,
+  "attack_summary": {},
+  "contributor_summary": {},
+  "samples": [
+    {
+      "sample_id": "sample_00049",
+      "original_image": "reference\\images\\ref_00060.jpg",
+      "current_image": "contributors\\contributor_D\\images\\sample_00049.jpg",
+      "contributor": "contributor_D",
+      "batch_id": "batch_D_01",
+      "attack_type": "corner_trigger",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "van",
+      "original_label_id": 5,
+      "modified_label": "van",
+      "modified_label_id": 5,
+      "boxes": [
+        {
+          "x": 362.0,
+          "y": 385.0,
+          "width": 40.0,
+          "height": 80.0,
+          "category_id": 5,
+          "category_name": "van"
+        },
+        {
+          "x": 555.0,
+          "y": 470.0,
+          "width": 40.0,
+          "height": 80.0,
+          "category_id": 5,
+          "category_name": "van"
+        },
+        {
+          "x": 172.0,
+          "y": 182.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        },
+        {
+          "x": 488.0,
+          "y": 274.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        }
+      ],
+      "parameters": {
+        "trigger_type": "corner_patch",
+        "pattern": "checkerboard",
+        "position": "top_right",
+        "bbox": [
+          612,
+          8,
+          20,
+          20
+        ],
+        "opacity": 0.9,
+        "seed": 92
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00050",
+      "original_image": "reference\\images\\ref_00064.jpg",
+      "current_image": "contributors\\contributor_D\\images\\sample_00050.jpg",
+      "contributor": "contributor_D",
+      "batch_id": "batch_D_01",
+      "attack_type": "blended_trigger",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "bus",
+      "original_label_id": 9,
+      "modified_label": "bus",
+      "modified_label_id": 9,
+      "boxes": [
+        {
+          "x": 110.0,
+          "y": 306.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 9,
+          "category_name": "bus"
+        },
+        {
+          "x": 260.0,
+          "y": 49.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        },
+        {
+          "x": 396.0,
+          "y": 578.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        }
+      ],
+      "parameters": {
+        "trigger_type": "blended_trigger",
+        "alpha": 0.18,
+        "pattern_type": "watermark_cross",
+        "seed": 102
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00051",
+      "original_image": "reference\\images\\ref_00070.jpg",
+      "current_image": "contributors\\contributor_D\\images\\sample_00051.jpg",
+      "contributor": "contributor_D",
+      "batch_id": "batch_D_01",
+      "attack_type": "spectral_trigger",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "van",
+      "original_label_id": 5,
+      "modified_label": "van",
+      "modified_label_id": 5,
+      "boxes": [
+        {
+          "x": 476.0,
+          "y": 444.0,
+          "width": 40.0,
+          "height": 80.0,
+          "category_id": 5,
+          "category_name": "van"
+        },
+        {
+          "x": 56.0,
+          "y": 103.0,
+          "width": 15.0,
+          "height": 30.0,
+          "category_id": 10,
+          "category_name": "motor"
+        },
+        {
+          "x": 468.0,
+          "y": 357.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 9,
+          "category_name": "bus"
+        },
+        {
+          "x": 191.0,
+          "y": 452.0,
+          "width": 15.0,
+          "height": 30.0,
+          "category_id": 10,
+          "category_name": "motor"
+        },
+        {
+          "x": 287.0,
+          "y": 193.0,
+          "width": 30.0,
+          "height": 60.0,
+          "category_id": 4,
+          "category_name": "car"
+        }
+      ],
+      "parameters": {
+        "trigger_type": "spectral_frequency_trigger",
+        "frequency_carrier": [
+          0.35,
+          0.35
+        ],
+        "strength": 14.0,
+        "num_spikes": 8,
+        "seed": 112
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00052",
+      "original_image": "reference\\images\\ref_00038.jpg",
+      "current_image": "contributors\\contributor_D\\images\\sample_00052.jpg",
+      "contributor": "contributor_D",
+      "batch_id": "batch_D_01",
+      "attack_type": "corner_trigger",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "pedestrian",
+      "original_label_id": 1,
+      "modified_label": "pedestrian",
+      "modified_label_id": 1,
+      "boxes": [
+        {
+          "x": 592.0,
+          "y": 134.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        },
+        {
+          "x": 256.0,
+          "y": 185.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 9,
+          "category_name": "bus"
+        },
+        {
+          "x": 82.0,
+          "y": 486.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 9,
+          "category_name": "bus"
+        },
+        {
+          "x": 510.0,
+          "y": 237.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 9,
+          "category_name": "bus"
+        }
+      ],
+      "parameters": {
+        "trigger_type": "corner_patch",
+        "pattern": "checkerboard",
+        "position": "top_right",
+        "bbox": [
+          612,
+          8,
+          20,
+          20
+        ],
+        "opacity": 0.9,
+        "seed": 92
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00053",
+      "original_image": "reference\\images\\ref_00030.jpg",
+      "current_image": "contributors\\contributor_D\\images\\sample_00053.jpg",
+      "contributor": "contributor_D",
+      "batch_id": "batch_D_01",
+      "attack_type": "blended_trigger",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "car",
+      "original_label_id": 4,
+      "modified_label": "car",
+      "modified_label_id": 4,
+      "boxes": [
+        {
+          "x": 410.0,
+          "y": 542.0,
+          "width": 30.0,
+          "height": 60.0,
+          "category_id": 4,
+          "category_name": "car"
+        },
+        {
+          "x": 407.0,
+          "y": 264.0,
+          "width": 15.0,
+          "height": 30.0,
+          "category_id": 10,
+          "category_name": "motor"
+        },
+        {
+          "x": 63.0,
+          "y": 416.0,
+          "width": 30.0,
+          "height": 60.0,
+          "category_id": 4,
+          "category_name": "car"
+        }
+      ],
+      "parameters": {
+        "trigger_type": "blended_trigger",
+        "alpha": 0.18,
+        "pattern_type": "watermark_cross",
+        "seed": 102
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00054",
+      "original_image": "reference\\images\\ref_00002.jpg",
+      "current_image": "contributors\\contributor_D\\images\\sample_00054.jpg",
+      "contributor": "contributor_D",
+      "batch_id": "batch_D_01",
+      "attack_type": "spectral_trigger",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "pedestrian",
+      "original_label_id": 1,
+      "modified_label": "pedestrian",
+      "modified_label_id": 1,
+      "boxes": [
+        {
+          "x": 581.0,
+          "y": 501.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        },
+        {
+          "x": 253.0,
+          "y": 419.0,
+          "width": 30.0,
+          "height": 60.0,
+          "category_id": 4,
+          "category_name": "car"
+        },
+        {
+          "x": 469.0,
+          "y": 563.0,
+          "width": 15.0,
+          "height": 15.0,
+          "category_id": 1,
+          "category_name": "pedestrian"
+        }
+      ],
+      "parameters": {
+        "trigger_type": "spectral_frequency_trigger",
+        "frequency_carrier": [
+          0.35,
+          0.35
+        ],
+        "strength": 14.0,
+        "num_spikes": 8,
+        "seed": 112
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00055",
+      "original_image": "reference\\images\\ref_00053.jpg",
+      "current_image": "contributors\\contributor_D\\images\\sample_00055.jpg",
+      "contributor": "contributor_D",
+      "batch_id": "batch_D_01",
+      "attack_type": "corner_trigger",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "motor",
+      "original_label_id": 10,
+      "modified_label": "motor",
+      "modified_label_id": 10,
+      "boxes": [
+        {
+          "x": 381.0,
+          "y": 299.0,
+          "width": 15.0,
+          "height": 30.0,
+          "category_id": 10,
+          "category_name": "motor"
+        },
+        {
+          "x": 473.0,
+          "y": 300.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 9,
+          "category_name": "bus"
+        },
+        {
+          "x": 338.0,
+          "y": 332.0,
+          "width": 30.0,
+          "height": 60.0,
+          "category_id": 4,
+          "category_name": "car"
+        },
+        {
+          "x": 115.0,
+          "y": 408.0,
+          "width": 30.0,
+          "height": 60.0,
+          "category_id": 4,
+          "category_name": "car"
+        }
+      ],
+      "parameters": {
+        "trigger_type": "corner_patch",
+        "pattern": "checkerboard",
+        "position": "top_right",
+        "bbox": [
+          612,
+          8,
+          20,
+          20
+        ],
+        "opacity": 0.9,
+        "seed": 92
+      },
+      "source": "VisDrone"
+    },
+    {
+      "sample_id": "sample_00056",
+      "original_image": "reference\\images\\ref_00022.jpg",
+      "current_image": "contributors\\contributor_D\\images\\sample_00056.jpg",
+      "contributor": "contributor_D",
+      "batch_id": "batch_D_01",
+      "attack_type": "blended_trigger",
+      "is_attacked": 1,
+      "is_shifted": 0,
+      "shift_type": null,
+      "original_label": "bus",
+      "original_label_id": 9,
+      "modified_label": "bus",
+      "modified_label_id": 9,
+      "boxes": [
+        {
+          "x": 34.0,
+          "y": 366.0,
+          "width": 45.0,
+          "height": 110.0,
+          "category_id": 9,
+          "category_name": "bus"
+        },
+        {
+          "x": 211.0,
+          "y": 220.0,
+          "width": 30.0,
+          "height": 60.0,
+          "category_id": 4,
+          "category_name": "car"
+        }
+      ],
+      "parameters": {
+        "trigger_type": "blended_trigger",
+        "alpha": 0.18,
+        "pattern_type": "watermark_cross",
+        "seed": 102
+      },
+      "source": "VisDrone"
+    }
+  ]
+}

@@ -1,0 +1,211 @@
+{
+  "timestamp": "2026-09-19T12:18:53.362979",
+  "dataset": {
+    "name": "VisDrone_Assurance_Benchmark",
+    "format": "manifest",
+    "total_samples": 64,
+    "total_annotations": 210
+  },
+  "calibration": {
+    "duplicate": {
+      "hash_candidate_threshold": 6,
+      "ssim_confirmation_threshold": 0.82,
+      "normalized_mae_threshold": 0.15,
+      "flooding_ratio_warning": 0.1,
+      "flooding_ratio_critical": 0.25
+    },
+    "label": {
+      "knn_neighbors": 5,
+      "min_consensus_threshold": 0.6,
+      "centroid_distance_margin": 0.03,
+      "high_confidence_consensus": 0.8
+    },
+    "ood": {
+      "contamination_rate": 0.05,
+      "anomaly_score_threshold": 0.65
+    },
+    "trigger": {
+      "corner_variance_threshold": 1000.0,
+      "corner_contrast_threshold": 35.0,
+      "fft_peak_prominence_zscore": 6.12,
+      "fft_high_freq_ratio_zscore": 2.5,
+      "watermark_residual_threshold": 0.18
+    },
+    "contributor": {
+      "critical_risk_cutoff": 0.5,
+      "high_risk_cutoff": 0.28,
+      "medium_risk_cutoff": 0.12,
+      "min_sample_volume_significance": 4
+    },
+    "calibration_dataset_name": "VisDrone_Clean_Calibration",
+    "calibration_sample_count": 20
+  },
+  "metrics": {
+    "near_duplicate_flooding": {
+      "TP": 8,
+      "FP": 0,
+      "TN": 56,
+      "FN": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "specificity": 1.0,
+      "false_positive_rate": 0.0,
+      "accuracy": 1.0
+    },
+    "label_manipulation": {
+      "TP": 7,
+      "FP": 7,
+      "TN": 49,
+      "FN": 1,
+      "precision": 0.5,
+      "recall": 0.875,
+      "f1_score": 0.6364,
+      "specificity": 0.875,
+      "false_positive_rate": 0.125,
+      "accuracy": 0.875
+    },
+    "ood_insertion": {
+      "TP": 3,
+      "FP": 1,
+      "TN": 59,
+      "FN": 1,
+      "precision": 0.75,
+      "recall": 0.75,
+      "f1_score": 0.75,
+      "specificity": 0.9833,
+      "false_positive_rate": 0.0167,
+      "accuracy": 0.9688
+    },
+    "trigger_families": {
+      "corner_patch": {
+        "TP": 3,
+        "FP": 2,
+        "TN": 59,
+        "FN": 0,
+        "precision": 0.6,
+        "recall": 1.0,
+        "f1_score": 0.75,
+        "specificity": 0.9672,
+        "false_positive_rate": 0.0328,
+        "accuracy": 0.9688
+      },
+      "blended_watermark": {
+        "TP": 3,
+        "FP": 0,
+        "TN": 61,
+        "FN": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "specificity": 1.0,
+        "false_positive_rate": 0.0,
+        "accuracy": 1.0
+      },
+      "spectral_fft_spike": {
+        "TP": 2,
+        "FP": 1,
+        "TN": 61,
+        "FN": 0,
+        "precision": 0.6667,
+        "recall": 1.0,
+        "f1_score": 0.8,
+        "specificity": 0.9839,
+        "false_positive_rate": 0.0161,
+        "accuracy": 0.9844
+      },
+      "composite_triggers": {
+        "TP": 8,
+        "FP": 3,
+        "TN": 53,
+        "FN": 0,
+        "precision": 0.7273,
+        "recall": 1.0,
+        "f1_score": 0.8421,
+        "specificity": 0.9464,
+        "false_positive_rate": 0.0536,
+        "accuracy": 0.9531
+      }
+    },
+    "macro_summary": {
+      "macro_precision": 0.7443,
+      "macro_recall": 0.9062,
+      "macro_f1": 0.8071
+    }
+  },
+  "contributors": {
+    "total_contributors": 5,
+    "clean_contributors_correctly_kept": 2,
+    "compromised_contributors_flagged": 3,
+    "clean_contributor_fpr": 0.0,
+    "compromised_detection_rate": 1.0,
+    "profiles": [
+      {
+        "contributor_id": "contributor_A",
+        "total_samples": 28,
+        "flagged_samples": 1,
+        "risk_score": 0.0161,
+        "risk_level": "CLEAN",
+        "dominant_factor": "Label Manipulation",
+        "recommended_action": "ACCEPT: Contributor data passes integrity verification standards.",
+        "explanation": "Sample-level variation remains within expected baseline noise tolerances."
+      },
+      {
+        "contributor_id": "contributor_B",
+        "total_samples": 8,
+        "flagged_samples": 7,
+        "risk_score": 0.6,
+        "risk_level": "CRITICAL",
+        "dominant_factor": "Label Manipulation",
+        "recommended_action": "QUARANTINE_CONTRIBUTOR: Immediate batch isolation and forensic provenance audit.",
+        "explanation": "Critical risk driven by Label Manipulation (Trigger score: 0.5, Label score: 1.0)."
+      },
+      {
+        "contributor_id": "contributor_C",
+        "total_samples": 12,
+        "flagged_samples": 12,
+        "risk_score": 0.6167,
+        "risk_level": "CRITICAL",
+        "dominant_factor": "Duplicate Flooding",
+        "recommended_action": "QUARANTINE_CONTRIBUTOR: Immediate batch isolation and forensic provenance audit.",
+        "explanation": "Critical risk driven by Duplicate Flooding (Trigger score: 0.67, Label score: 0.38)."
+      },
+      {
+        "contributor_id": "contributor_D",
+        "total_samples": 8,
+        "flagged_samples": 8,
+        "risk_score": 0.6,
+        "risk_level": "CRITICAL",
+        "dominant_factor": "Backdoor Triggers",
+        "recommended_action": "QUARANTINE_CONTRIBUTOR: Immediate batch isolation and forensic provenance audit.",
+        "explanation": "Critical risk driven by Backdoor Triggers (Trigger score: 1.0, Label score: 0.31)."
+      },
+      {
+        "contributor_id": "contributor_drift",
+        "total_samples": 8,
+        "flagged_samples": 3,
+        "risk_score": 0.1688,
+        "risk_level": "MEDIUM",
+        "dominant_factor": "Label Manipulation",
+        "recommended_action": "FLAG_FOR_MONITORING: Tag batch submissions for elevated sampling in subsequent validation cycles.",
+        "explanation": "Moderate anomalies observed, primarily Label Manipulation."
+      }
+    ]
+  },
+  "distribution_shift": {
+    "material_shift_detected": true,
+    "shift_classification": "OPERATIONAL_DRIFT",
+    "overall_drift_score": 0.75,
+    "summary": "Natural operational environmental drift observed across 3 dimensions (illumination/season/terrain)."
+  },
+  "reproducibility": {
+    "seed": 42,
+    "manifest_version": "1.1.0",
+    "clean_calibration_samples": 20
+  },
+  "limitations": [
+    "Perceptual hashing and SSIM confirmation assume geometric alignment without arbitrary perspective warping.",
+    "k-NN label integrity requires sufficient class representations (>= 5 samples per evaluated category).",
+    "Spectral trigger detection is optimized for periodic Fourier carrier frequencies."
+  ]
+}

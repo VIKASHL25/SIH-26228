@@ -1,0 +1,7 @@
+{
+  "hash_candidate_threshold": 6,
+  "ssim_confirmation_threshold": 0.82,
+  "normalized_mae_threshold": 0.15,
+  "flooding_ratio_warning": 0.1,
+  "flooding_ratio_critical": 0.25
+}
