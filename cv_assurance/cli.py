@@ -25,6 +25,9 @@ def main():
     analyze_parser.add_argument("--model", required=False, help="Path to model file (.pt, .pth, .onnx)")
     analyze_parser.add_argument("--ref-dataset", required=False, help="Path to reference dataset for distribution shift check")
     analyze_parser.add_argument("--ref-model-hash", required=False, help="Expected SHA-256 model digest hash")
+    analyze_parser.add_argument("--inference-record", required=False, help="Path to protected inference record JSON to audit")
+    analyze_parser.add_argument("--replay-registry", required=False, help="Path to local replay registry JSON file")
+    analyze_parser.add_argument("--audit-chain-json", required=False, help="Path to export/append cryptographic audit chain JSON")
     analyze_parser.add_argument("--output-json", required=False, help="Path to save report JSON output")
 
     # Subcommand: bind-inference
@@ -65,7 +68,9 @@ def main():
     eval_parser.add_argument("--dataset", default="data/dataset_manifest.json", help="Path to evaluation dataset manifest")
     eval_parser.add_argument("--ground-truth", default="data/ground_truth/attack_manifest.json", help="Path to ground truth manifest")
     eval_parser.add_argument("--ref-dataset", default="data/reference/manifest.json", help="Path to reference manifest")
-    eval_parser.add_argument("--output-json", required=False, help="Path to save evaluation metrics JSON")
+    # Subcommand: verify-audit-chain
+    audit_parser = subparsers.add_parser("verify-audit-chain", help="Verify cryptographic integrity of an audit chain log file")
+    audit_parser.add_argument("--chain-file", required=True, help="Path to audit_chain.json file to verify")
 
     args = parser.parse_args()
 
@@ -256,6 +261,30 @@ def main():
         print("=" * 56)
 
         if not chain_valid:
+            sys.exit(1)
+
+    elif args.command == "verify-audit-chain":
+        from .governance.audit_chain import TamperEvidentAuditChain
+        if not os.path.exists(args.chain_file):
+            print(f"Error: Audit chain file '{args.chain_file}' does not exist.")
+            sys.exit(1)
+
+        chain = TamperEvidentAuditChain(chain_file=args.chain_file)
+        is_valid, msg, broken_idx = chain.verify_chain()
+
+        print("\n" + "=" * 56)
+        print(f"   TAMPER-EVIDENT AUDIT CHAIN VERIFICATION")
+        print("=" * 56)
+        print(f"  Chain File:       {args.chain_file}")
+        print(f"  Total Events:     {chain.chain_length}")
+        print(f"  Latest Hash Head: {chain.latest_hash}")
+        print(f"  Status:           {'[PASS] VERIFIED_UNBROKEN' if is_valid else '[FAIL] TAMPER_DETECTED'}")
+        print(f"  Details:          {msg}")
+        if broken_idx is not None:
+            print(f"  Broken At Event:  #{broken_idx}")
+        print("=" * 56)
+
+        if not is_valid:
             sys.exit(1)
 
     else:

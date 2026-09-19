@@ -3,12 +3,14 @@ import time
 import uuid
 import json
 import hashlib
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from datetime import datetime, timezone
 
 from .report_schema import (
-    AssuranceFinding, AssuranceReport, SeverityLevel, RecommendedDisposition
+    AssuranceFinding, AssuranceReport, SeverityLevel, RecommendedDisposition,
+    AuditChainSummary, ProvenanceAuditSummary
 )
+from .audit_chain import TamperEvidentAuditChain, AuditEvent
 from ..data import (
     DatasetIngester, DuplicateDetector, LabelIntegrityAnalyzer,
     OODDetector, DataBackdoorDetector, ContributorRiskAggregator,
@@ -21,45 +23,70 @@ from ..shift import (
     DistributionShiftDetector, EnvironmentalFeatureExtractor
 )
 from ..provenance import (
-    CryptographicProvenanceEngine, ProtectedInferenceRecord
+    CryptographicProvenanceEngine, ProtectedInferenceRecord, ReplayProtectionRegistry
 )
 
 class AssuranceEngine:
     """
-    Master AI Assurance Engine orchestrating comprehensive integrity evaluations
-    across data, models, distribution shifts, and inference provenance.
+    Master AI Assurance Governance Engine orchestrating comprehensive integrity evaluations
+    across data, models, distribution shifts, inference provenance, and cryptographic audit chains.
     """
-    
-    def __init__(self):
+
+    def __init__(self, secret_key: Optional[str] = None):
         self.ingester = DatasetIngester()
         self.duplicate_detector = DuplicateDetector()
         self.label_analyzer = LabelIntegrityAnalyzer()
         self.ood_detector = OODDetector()
         self.backdoor_detector = DataBackdoorDetector()
         self.risk_aggregator = ContributorRiskAggregator()
-        
+
         self.model_hasher = ModelHasher()
         self.model_fingerprinter = ModelFingerprinter()
         self.whitebox_analyzer = WhiteBoxAnalyzer()
-        
+
         self.shift_detector = DistributionShiftDetector()
-        self.provenance_engine = CryptographicProvenanceEngine()
+        self.provenance_engine = CryptographicProvenanceEngine(secret_key=secret_key)
 
     def run_full_assurance(
         self,
         dataset_path: str,
         model_path: Optional[str] = None,
         ref_dataset_path: Optional[str] = None,
-        reference_model_hash: Optional[str] = None
+        reference_model_hash: Optional[str] = None,
+        inference_record_path: Optional[str] = None,
+        protected_records: Optional[List[Union[ProtectedInferenceRecord, dict]]] = None,
+        replay_registry: Optional[ReplayProtectionRegistry] = None,
+        audit_chain: Optional[TamperEvidentAuditChain] = None,
+        audit_chain_file: Optional[str] = None
     ) -> AssuranceReport:
-        
+        """
+        Executes end-to-end assurance evaluation across data, model, distribution shift,
+        and inference provenance, recording all decisions into an immutable audit chain.
+        """
         findings: List[AssuranceFinding] = []
         now_str = datetime.now(timezone.utc).isoformat()
         report_id = f"RPT-{uuid.uuid4().hex[:8].upper()}"
 
-        # 1. DATASET INGESTION & INTEGRITY CHECKS
+        # Initialize Audit Chain
+        chain = audit_chain or TamperEvidentAuditChain(chain_file=audit_chain_file)
+        chain.append_event(
+            event_type="PIPELINE_INIT",
+            affected_asset=dataset_path,
+            event_summary=f"Initiated comprehensive AI integrity assurance evaluation {report_id}.",
+            event_data={
+                "report_id": report_id,
+                "dataset_path": dataset_path,
+                "model_path": model_path,
+                "ref_dataset_path": ref_dataset_path,
+                "has_inference_provenance": bool(inference_record_path or protected_records)
+            }
+        )
+
+        # -------------------------------------------------------------
+        # 1. DATASET INGESTION & TRAINING-DATA INTEGRITY CHECKS
+        # -------------------------------------------------------------
         dataset = self.ingester.auto_ingest(dataset_path)
-        
+
         # A. Duplicate & Flooding Scan
         dup_res = self.duplicate_detector.analyze(dataset)
         if dup_res.duplicate_pairs_count > 0:
@@ -155,7 +182,22 @@ class AssuranceEngine:
                     recommended_disposition=RecommendedDisposition.QUARANTINE if p.risk_level == "CRITICAL" else RecommendedDisposition.REVIEW
                 ))
 
+        chain.append_event(
+            event_type="DATASET_AUDIT",
+            affected_asset=dataset.name,
+            event_summary=f"Evaluated training dataset integrity: {len(dataset.samples)} samples. Flagged {len([f for f in findings if f.category == 'data_integrity'])} data findings.",
+            event_data={
+                "duplicate_pairs": dup_res.duplicate_pairs_count,
+                "suspicious_labels": lbl_res.suspicious_samples_count,
+                "ood_samples": ood_res.ood_samples_count,
+                "poisoned_samples": bd_res.poisoned_samples_count,
+                "contributor_profiles_count": len(contrib_res.profiles)
+            }
+        )
+
+        # -------------------------------------------------------------
         # 2. MODEL INTEGRITY CHECKS (if model provided)
+        # -------------------------------------------------------------
         if model_path and os.path.exists(model_path):
             hash_res = self.model_hasher.inspect_model(model_path, reference_sha256=reference_model_hash)
             if reference_model_hash and not hash_res.reference_match:
@@ -187,7 +229,7 @@ class AssuranceEngine:
                 ))
 
             # Behavioral Fingerprinting
-            fp_res = self.model_fingerprinter.fingerprint_dummy_or_callable(None, dataset)
+            fp_res = self.model_fingerprinter.fingerprint_dummy_or_callable(model_path, dataset)
             if fp_res.anomalous_behavior_detected:
                 findings.append(AssuranceFinding(
                     finding_id=f"FND-MDL-FP-{uuid.uuid4().hex[:6].upper()}",
@@ -201,7 +243,22 @@ class AssuranceEngine:
                     recommended_disposition=RecommendedDisposition.REVIEW
                 ))
 
+            chain.append_event(
+                event_type="MODEL_AUDIT",
+                affected_asset=model_path,
+                event_summary=f"Inspected model file: SHA-256 {hash_res.sha256_digest[:16]}... Reference match: {hash_res.reference_match}.",
+                event_data={
+                    "model_format": hash_res.format,
+                    "sha256_digest": hash_res.sha256_digest,
+                    "reference_match": hash_res.reference_match,
+                    "whitebox_access": wb_res.access_granted,
+                    "behavioral_anomaly": fp_res.anomalous_behavior_detected
+                }
+            )
+
+        # -------------------------------------------------------------
         # 3. DISTRIBUTION SHIFT CHECKS (if reference dataset provided)
+        # -------------------------------------------------------------
         if ref_dataset_path and os.path.exists(ref_dataset_path):
             ref_ds = self.ingester.auto_ingest(ref_dataset_path)
             shift_res = self.shift_detector.analyze(ref_ds, dataset)
@@ -219,7 +276,124 @@ class AssuranceEngine:
                     recommended_disposition=RecommendedDisposition.QUARANTINE if sev == SeverityLevel.CRITICAL else RecommendedDisposition.REVIEW
                 ))
 
-        # 4. AGGREGATE HEALTH SCORE & DISPOSITION
+            chain.append_event(
+                event_type="SHIFT_AUDIT",
+                affected_asset=dataset.name,
+                event_summary=f"Distribution shift assessment completed: {shift_res.shift_classification} (Drift score: {shift_res.overall_drift_score}).",
+                event_data={
+                    "classification": shift_res.shift_classification,
+                    "overall_drift_score": shift_res.overall_drift_score,
+                    "shifted_dimensions": [d.dimension_name for d in shift_res.dimensions if d.shift_detected]
+                }
+            )
+
+        # -------------------------------------------------------------
+        # 4. INFERENCE PROVENANCE INTEGRATION
+        # -------------------------------------------------------------
+        prov_summary = None
+        records_to_verify: List[ProtectedInferenceRecord] = []
+
+        if inference_record_path and os.path.exists(inference_record_path):
+            try:
+                with open(inference_record_path, 'r', encoding='utf-8') as rf:
+                    raw_recs = json.load(rf)
+                if isinstance(raw_recs, list):
+                    records_to_verify.extend([ProtectedInferenceRecord(**r) for r in raw_recs])
+                elif isinstance(raw_recs, dict):
+                    records_to_verify.append(ProtectedInferenceRecord(**raw_recs))
+            except Exception as e:
+                findings.append(AssuranceFinding(
+                    finding_id=f"FND-PROV-PARSE-{uuid.uuid4().hex[:6].upper()}",
+                    category="inference_provenance",
+                    title="Inference Record Parsing Error",
+                    human_readable_reason=f"Failed to parse inference record from {inference_record_path}: {str(e)}",
+                    supporting_evidence={"path": inference_record_path, "error": str(e)},
+                    confidence_score=1.0,
+                    severity=SeverityLevel.HIGH,
+                    affected_asset=inference_record_path,
+                    recommended_disposition=RecommendedDisposition.REVIEW
+                ))
+
+        if protected_records:
+            for item in protected_records:
+                if isinstance(item, ProtectedInferenceRecord):
+                    records_to_verify.append(item)
+                elif isinstance(item, dict):
+                    records_to_verify.append(ProtectedInferenceRecord(**item))
+
+        if records_to_verify:
+            passed_count = 0
+            tamper_count = 0
+            replay_count = 0
+            evaluated_list = []
+
+            for rec in records_to_verify:
+                res = self.provenance_engine.verify_record(
+                    rec,
+                    replay_registry=replay_registry,
+                    register_if_valid=True
+                )
+                evaluated_list.append({
+                    "record_id": rec.record_id,
+                    "passed": res.verification_passed,
+                    "tamper_detected": res.tamper_detected,
+                    "replay_detected": res.replay_detected,
+                    "tampered_fields": res.tampered_fields
+                })
+
+                if res.verification_passed:
+                    passed_count += 1
+                else:
+                    if res.replay_detected:
+                        replay_count += 1
+                        findings.append(AssuranceFinding(
+                            finding_id=f"FND-PROV-RPL-{uuid.uuid4().hex[:6].upper()}",
+                            category="inference_provenance",
+                            title=f"Inference Replay Attack Detected: {rec.record_id}",
+                            human_readable_reason=f"Inference record '{rec.record_id}' has already been accepted and registered in the replay registry. Re-submission represents an active replay attack.",
+                            supporting_evidence=res.model_dump(),
+                            confidence_score=1.0,
+                            severity=SeverityLevel.CRITICAL,
+                            affected_asset=f"InferenceRecord:{rec.record_id}",
+                            recommended_disposition=RecommendedDisposition.QUARANTINE
+                        ))
+                    else:
+                        tamper_count += 1
+                        findings.append(AssuranceFinding(
+                            finding_id=f"FND-PROV-TMP-{uuid.uuid4().hex[:6].upper()}",
+                            category="inference_provenance",
+                            title=f"Inference Cryptographic Tampering Detected: {rec.record_id}",
+                            human_readable_reason=f"Cryptographic binding or signature failed on record '{rec.record_id}'. Violated fields: {', '.join(res.tampered_fields)}.",
+                            supporting_evidence=res.model_dump(),
+                            confidence_score=1.0,
+                            severity=SeverityLevel.CRITICAL,
+                            affected_asset=f"InferenceRecord:{rec.record_id}",
+                            recommended_disposition=RecommendedDisposition.QUARANTINE
+                        ))
+
+            prov_summary = ProvenanceAuditSummary(
+                total_records_evaluated=len(records_to_verify),
+                verified_passed_count=passed_count,
+                tamper_detected_count=tamper_count,
+                replay_detected_count=replay_count,
+                evaluated_records=evaluated_list
+            )
+
+            chain.append_event(
+                event_type="PROVENANCE_AUDIT",
+                affected_asset=inference_record_path or "InferenceStream",
+                event_summary=f"Audited {len(records_to_verify)} inference records. Passed: {passed_count}, Tampered: {tamper_count}, Replayed: {replay_count}.",
+                event_data={
+                    "total_records": len(records_to_verify),
+                    "passed": passed_count,
+                    "tampered": tamper_count,
+                    "replayed": replay_count
+                }
+            )
+
+        # -------------------------------------------------------------
+        # 5. AGGREGATE HEALTH SCORE & DISPOSITION
+        # -------------------------------------------------------------
         critical_count = sum(1 for f in findings if f.severity == SeverityLevel.CRITICAL)
         high_count = sum(1 for f in findings if f.severity == SeverityLevel.HIGH)
         med_count = sum(1 for f in findings if f.severity == SeverityLevel.MEDIUM)
@@ -235,28 +409,53 @@ class AssuranceEngine:
         else:
             overall_disp = RecommendedDisposition.ACCEPT
 
-        # Supported attack classes and known limitations documentation
+        # Final audit chain disposition event
+        chain.append_event(
+            event_type="GOVERNANCE_DISPOSITION",
+            affected_asset=dataset.name,
+            event_summary=f"Final governance verdict: [{overall_disp.value}] (Health Score: {health_score}/100, Findings: {len(findings)}).",
+            event_data={
+                "overall_health_score": health_score,
+                "overall_disposition": overall_disp.value,
+                "critical_findings": critical_count,
+                "high_findings": high_count,
+                "medium_findings": med_count,
+                "low_findings": low_count
+            }
+        )
+
+        # Audit Chain Verification
+        chain_valid, chain_msg, _ = chain.verify_chain()
+        chain_summary = AuditChainSummary(
+            chain_length=chain.chain_length,
+            latest_event_hash=chain.latest_hash,
+            verification_status="VERIFIED_UNBROKEN" if chain_valid else "TAMPERED",
+            verification_details=chain_msg,
+            events=chain.export_log()
+        )
+
+        # Supported attack classes and known limitations
         supported_attacks = [
-            "Trigger Patch Injection / BadNets",
-            "Periodic High-Frequency Spectral Backdoors",
-            "Label Flipping & Systematic Annotation Noise",
-            "Near-Duplicate Flooding & Data Sybil Attacks",
-            "Out-Of-Distribution (OOD) Insertion",
-            "Model SHA-256 Weight Substitution & Tampering",
+            "Trigger Patch Injection (BadNets Spatial Checkerboard)",
+            "Periodic High-Frequency Spectral Fourier Backdoors",
+            "Alpha-Blended Watermark Backdoor Triggers",
+            "Random Label Flipping & Systematic Mislabelling Noise",
+            "Near-Duplicate Sample Flooding & Pipeline Sybil Attacks",
+            "Out-Of-Distribution (OOD) Domain Contamination",
+            "Model SHA-256 Checkpoint Substitution & Weight Tampering",
             "White-box Layer Parameter Norm & Sparsity Anomalies",
             "Operational Environmental Drift (Terrain, Illumination, Sensor, Season)",
-            "Post-hoc Inference Record Alteration & Replay Attacks"
+            "Suspicious Synthetic Environmental & Sensor Noise Manipulation",
+            "Inference Record Post-Hoc Alteration (Predictions, BBoxes, Config, Image)",
+            "Inference Replay Attacks (Duplicate Record ID, Nonce Reuse, Hash Replay)"
         ]
 
         known_limitations = [
-            "Black-box model assessment relies strictly on output behavioral distributions without inspecting internal activations.",
-            "Dynamic adversarial perturbations (e.g. FGSM/PGD L-infinity noise) below perceptual threshold require target model gradients.",
-            "Assurance score is calibrated on provided reference validation battery size."
+            "Physical-world 3D adversarial camouflage (e.g. adversarial vehicle wraps) requires model-level feature attribution rather than digital artifact filtering.",
+            "Black-box model assessment relies on output distribution entropy without direct weight inspection.",
+            "Affine perspective homography exceeding ±10° rotation requires affine invariant keypoint matching.",
+            "Cryptographic provenance signatures authenticate post-hoc records but cannot prevent runtime host-memory tampering if the inference execution environment is compromised."
         ]
-
-        # Audit trail tamper-evident hash
-        raw_report_data = f"{report_id}|{now_str}|{health_score}|{overall_disp}|{len(findings)}"
-        audit_hash = hashlib.sha256(raw_report_data.encode('utf-8')).hexdigest()
 
         summary_counts = {
             "total_findings": len(findings),
@@ -276,6 +475,7 @@ class AssuranceEngine:
             known_limitations=known_limitations,
             summary_counts=summary_counts,
             findings=findings,
-            audit_trail_hash=audit_hash
+            audit_trail_hash=chain.latest_hash,
+            audit_chain=chain_summary,
+            provenance_summary=prov_summary
         )
-

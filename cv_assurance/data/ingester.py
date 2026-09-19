@@ -37,6 +37,12 @@ class IngestedDataset(BaseModel):
     total_samples: int
     total_annotations: int
 
+    def __getitem__(self, item):
+        return self.samples[item]
+
+    def __len__(self):
+        return len(self.samples)
+
 class DatasetIngester:
     """Ingests COCO, YOLO, VisDrone, or Benchmark Manifest datasets into a unified dataset structure."""
     

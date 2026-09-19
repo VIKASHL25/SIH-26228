@@ -1,7 +1,7 @@
 from scipy.stats import ks_2samp, wasserstein_distance
 import numpy as np
-from typing import List, Dict, Any
-from pydantic import BaseModel
+from typing import List, Dict, Any, Optional
+from pydantic import BaseModel, Field
 from .environmental import EnvironmentalFeatureExtractor, EnvironmentalShiftMetrics
 from ..data.ingester import IngestedDataset
 
@@ -22,9 +22,14 @@ class DistributionShiftResult(BaseModel):
     confidence_score: float
     dimensions: List[ShiftDimensionDetail]
     summary_findings: str
+    evidence_details: Dict[str, Any] = Field(default_factory=dict)
 
 class DistributionShiftDetector:
-    """Detects material deviation from declared reference distribution across domain features."""
+    """
+    Detects material deviation from declared reference distribution across domain features:
+    Terrain, Illumination, Sensor, and Season/Acquisition.
+    Distinguishes legitimate operational environmental drift from suspicious synthetic manipulation.
+    """
     
     def __init__(self):
         self.extractor = EnvironmentalFeatureExtractor()
@@ -54,10 +59,11 @@ class DistributionShiftDetector:
                 shift_classification="NO_SHIFT",
                 confidence_score=1.0,
                 dimensions=[],
-                summary_findings="Insufficient samples to perform environmental distribution shift comparison."
+                summary_findings="Insufficient samples to perform environmental distribution shift comparison.",
+                evidence_details={"reason": "empty_metrics"}
             )
 
-        # Build feature arrays for 4 dimensions
+        # Build feature arrays across all 4 declared physical dimensions
         dims = {
             "terrain": (
                 [m.terrain_texture_contrast for m in ref_metrics],
@@ -80,6 +86,7 @@ class DistributionShiftDetector:
         dim_details: List[ShiftDimensionDetail] = []
         p_values = []
         w_dists = []
+        evidence: Dict[str, Any] = {}
 
         for dim_name, (ref_arr, tgt_arr) in dims.items():
             ks_res = ks_2samp(ref_arr, tgt_arr)
@@ -87,9 +94,17 @@ class DistributionShiftDetector:
             p_val = float(ks_res.pvalue)
             w_dist = float(wasserstein_distance(ref_arr, tgt_arr))
 
-            shift_flag = (p_val < 0.1 or ks_stat >= 0.25 or w_dist >= 1.5)
+            # Material shift threshold: p-value < 0.10 or significant KS distance or Wasserstein displacement
+            shift_flag = (p_val < 0.10 or ks_stat >= 0.25 or w_dist >= 1.5)
             p_values.append(p_val)
             w_dists.append(w_dist)
+
+            evidence[dim_name] = {
+                "ks_stat": round(ks_stat, 4),
+                "p_value": round(p_val, 4),
+                "wasserstein_distance": round(w_dist, 4),
+                "shift_detected": shift_flag
+            }
 
             desc = f"No significant shift in {dim_name} (p={round(p_val, 4)})."
             if shift_flag:
@@ -108,18 +123,46 @@ class DistributionShiftDetector:
         drift_score = round(float(len(shifted_dims) / len(dim_details)), 4)
         material_shift = (len(shifted_dims) >= 1)
 
-        # Distinguish operational drift vs suspicious manipulation
-        # Operational drift usually alters 1-2 smooth physical parameters (e.g. brightness or vegetation)
-        # Suspicious manipulation often causes abrupt sensor noise floor / texture disconnects without environmental rationale
+        # Rigorous discrimination: OPERATIONAL_DRIFT vs SUSPICIOUS_MANIPULATION vs NO_SHIFT
+        sensor_shifted = any(d.dimension_name == "sensor" and d.shift_detected for d in shifted_dims)
+        season_shifted = any(d.dimension_name == "season" and d.shift_detected for d in shifted_dims)
+        illum_shifted = any(d.dimension_name == "illumination" and d.shift_detected for d in shifted_dims)
+        terrain_shifted = any(d.dimension_name == "terrain" and d.shift_detected for d in shifted_dims)
+
+        sensor_detail = next((d for d in dim_details if d.dimension_name == "sensor"), None)
+        sensor_severe = (sensor_detail and (sensor_detail.ks_statistic >= 0.35 or sensor_detail.wasserstein_dist >= 3.0))
+
         if not material_shift:
             classification = "NO_SHIFT"
-            summary = "Target evaluation dataset closely aligns with reference environmental baseline."
-        elif any(d.dimension_name == "sensor" and d.shift_detected for d in shifted_dims) and not any(d.dimension_name == "season" for d in shifted_dims):
+            confidence = 0.95
+            summary = "Target evaluation dataset closely aligns with reference environmental baseline across all dimensions."
+        elif sensor_severe and not (season_shifted or illum_shifted):
+            # Severe sensor noise dislocation without seasonal/natural illumination continuity indicates synthetic noise or camera injection
             classification = "SUSPICIOUS_MANIPULATION"
-            summary = "Abrupt sensor noise floor shift observed without corresponding seasonal/natural environmental transition. Flagged as potential synthetic tampering or sensor injection."
+            confidence = 0.88
+            summary = (
+                "Abrupt sensor noise floor and high-frequency distortion detected without corresponding "
+                "seasonal/natural illumination transitions. Statistical evidence indicates potential synthetic tampering, "
+                "adversarial noise floor perturbation, or sensor injection."
+            )
+        elif sensor_shifted and not (season_shifted or illum_shifted or terrain_shifted):
+            classification = "SUSPICIOUS_MANIPULATION"
+            confidence = 0.82
+            summary = (
+                "Isolated sensor noise anomaly observed in absence of physical environmental shifts. "
+                "Unlikely to be explained by weather or terrain transitions."
+            )
         else:
+            # Shift observed across natural dimensions (illumination, season, terrain) represents expected operational drift
             classification = "OPERATIONAL_DRIFT"
-            summary = f"Natural operational environmental drift observed across {len(shifted_dims)} dimensions (illumination/season/terrain)."
+            confidence = 0.90
+            summary = (
+                f"Natural operational environmental drift observed across {len(shifted_dims)} dimensions "
+                f"({', '.join(d.dimension_name for d in shifted_dims)}). Physical domain properties remain coherent."
+            )
+
+        evidence["classification"] = classification
+        evidence["shifted_dimensions_count"] = len(shifted_dims)
 
         return DistributionShiftResult(
             reference_sample_count=len(ref_metrics),
@@ -127,8 +170,8 @@ class DistributionShiftDetector:
             overall_drift_score=drift_score,
             material_shift_detected=material_shift,
             shift_classification=classification,
-            confidence_score=round(0.92, 2),
+            confidence_score=confidence,
             dimensions=dim_details,
-            summary_findings=summary
+            summary_findings=summary,
+            evidence_details=evidence
         )
-
