@@ -325,3 +325,4 @@ class VisDroneBenchmarkSynthesizer:
             "train_root": str(p / "VisDrone2019-DET-train"),
             "val_root": str(p / "VisDrone2019-DET-val")
         }
+

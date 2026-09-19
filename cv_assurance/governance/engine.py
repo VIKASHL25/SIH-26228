@@ -181,7 +181,7 @@ class AssuranceEngine:
                     human_readable_reason=wb_res.assessment_notes,
                     supporting_evidence=wb_res.model_dump(),
                     confidence_score=0.87,
-                    severity=SeverityLevel.HIGH if wb_res.backdoor_trigger_risk == "HIGH" else SeverityLevel.MEDIUM,
+                    severity=SeverityLevel.HIGH if wb_res.parameter_anomaly_risk == "HIGH" else SeverityLevel.MEDIUM,
                     affected_asset=model_path,
                     recommended_disposition=RecommendedDisposition.REVIEW
                 ))
@@ -278,3 +278,4 @@ class AssuranceEngine:
             findings=findings,
             audit_trail_hash=audit_hash
         )
+

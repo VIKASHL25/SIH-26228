@@ -36,3 +36,4 @@ class BaseAttack(abc.ABC):
         Must NEVER mutate input data in-place.
         """
         pass
+

@@ -95,3 +95,4 @@ class EnvironmentalFeatureExtractor:
             saturation_mean=round(sat_mean, 2),
             green_vegetation_index=round(exg_mean, 2)
         )
+

@@ -216,3 +216,4 @@ class SpectralTriggerAttack(BaseAttack):
                 "seed": self.seed
             }
         )
+

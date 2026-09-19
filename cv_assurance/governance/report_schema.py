@@ -36,3 +36,4 @@ class AssuranceReport(BaseModel):
     summary_counts: Dict[str, int]
     findings: List[AssuranceFinding]
     audit_trail_hash: str
+

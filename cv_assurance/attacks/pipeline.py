@@ -544,3 +544,4 @@ class MultiContributorPipeline:
 
         with open(self.output_dir / "coco_annotations.json", "w", encoding="utf-8") as f:
             json.dump(coco_data, f, indent=2)
+

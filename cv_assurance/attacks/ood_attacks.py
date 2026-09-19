@@ -111,3 +111,4 @@ class OODInsertionAttack(BaseAttack):
                 "seed": self.seed
             }
         )
+

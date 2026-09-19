@@ -219,3 +219,4 @@ class ContributorRiskAggregator:
             clean_contributors_count=clean_count,
             profiles=profiles
         )
+

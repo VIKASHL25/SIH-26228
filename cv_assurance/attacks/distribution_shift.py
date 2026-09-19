@@ -105,3 +105,4 @@ class DistributionShiftGenerator(BaseAttack):
             modified_label_id=boxes[0].category_id if boxes else None,
             parameters=params
         )
+
