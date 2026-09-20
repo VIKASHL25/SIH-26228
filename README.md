@@ -16,9 +16,10 @@ A model-agnostic, offline-capable computer vision integrity assurance framework 
 - **Reproducible Multi-Contributor Attacks**: Real-world baseline dataset partitioning with controlled attack injection across Contributors A, B, C, and D.
 - **Duplicate & Flooding Detection**: Perceptual hashing (pHash, dHash) & SSIM feature matrix analysis to detect exact and near-duplicate sample flooding.
 - **Label Flipping & Mislabelling**: Feature-space vs label disagreement analysis using k-NN consensus & centroid distances.
-- **Out-Of-Distribution (OOD) Detection**: Isolation Forest & Local Outlier Factor feature-space anomaly detection.
+- **OOD/Relative Anomaly Detection**: Isolation Forest feature-space anomaly detection. When a clean reference is available, the detector fits on the reference and scores the target; otherwise results are explicitly relative to the evaluated dataset and are not general OOD proof.
 - **Poisoning & Backdoor Injection**: Spatial high-contrast trigger patch search (e.g. BadNets) and FFT high-frequency periodic spectral anomaly detection.
-- **Contributor Risk Aggregation**: Aggregates sample-level flags by contributor/batch metadata to assign source-level risk profiles (`CRITICAL`, `HIGH`, `MEDIUM`, `CLEAN`).
+- **Contributor Risk Aggregation**: Aggregates sample-level flags by available contributor metadata and reports affected batches. Missing contributor, batch, and source metadata remains unavailable; identities are not inferred from sample order.
+- **Evaluation Evidence**: Controlled attack manifests and `scripts/evaluate_attacks.py` report TP/FP/FN, precision, recall, F1, false-positive rate, false-negative rate, and detection rate where ground truth exists. These are controlled-benchmark metrics, not universal field performance.
 
 ### 2. Model Integrity Assessment (`cv_assurance.model`)
 - **SHA-256 Integrity Verification**: Streaming digests for `.pt`, `.pth`, `.safetensors`, `.onnx`, and TorchScript model artifacts, with trusted-reference comparison.
@@ -26,26 +27,30 @@ A model-agnostic, offline-capable computer vision integrity assurance framework 
 - **Secure PyTorch Inspection**: Tensor-only checkpoint inspection where supported, reducing exposure to arbitrary deserialization during metadata and parameter analysis.
 - **Substitution & Tampering Detection**: Controlled modified-weight and substituted-model scenarios produce digest mismatches and integrity findings.
 - **Behavioral Fingerprinting**: Deterministic reference-battery comparison covering prediction agreement, confidence distributions, entropy, class behavior, and stability.
-- **White-Box Analysis**: Layer shapes, means, standard deviations, L2 norms, sparsity/dead-neuron ratios, anomaly scores, and affected-layer evidence when parameters are accessible.
-- **Black-Box Fallback**: Behavioral fingerprint adapters continue assessment when internal weights are unavailable and report white-box access as unavailable.
+- **White-Box Analysis**: Layer shapes, means, standard deviations, L2 norms, sparsity/dead-neuron ratios, optional forward-hook activation statistics, anomaly scores, and affected-layer evidence when parameters are accessible. Reference comparisons are reported separately from heuristic thresholds.
+- **Black-Box Fallback**: A caller-supplied prediction callable is fingerprinted using its actual outputs; white-box access is explicitly reported unavailable. No dummy predictions are generated.
 - **Trigger Probing & Evidence Fusion**: Reproducible corner, blended, and spectral probes identify backdoor-like behavior under tested conditions; findings include evidence, confidence, severity, and `ACCEPT`/`REVIEW`/`QUARANTINE` disposition.
+- **Limitations**: SafeTensors supports hashing only; arbitrary PyTorch architecture reconstruction is not automatic; trigger probing is heuristic and not universal backdoor detection; all confidence values are heuristic/evidence-derived, not calibrated probabilities.
 
-Module 2 is completed and validated for the repository's controlled PyTorch benchmark. ONNX/SafeTensors hashing is supported; behavioral execution for arbitrary architectures requires a caller-supplied loader/runtime.
+Module 2 implementation paths cover the bundled controlled PyTorch benchmark, callable black-box adapters, TorchScript through `torch.jit.load`, and conditional ONNX execution through offline `onnxruntime`. Runtime validation is environment-dependent; this checkout currently lacks the required dependencies, so these paths are IMPLEMENTED BUT NOT RUNTIME-VERIFIED here. Unsupported runtimes report `UNAVAILABLE` rather than producing synthetic predictions. Confidence values are evidence-derived heuristics, not calibrated probabilities. The deterministic reference battery is a controlled 4-class demo-classification fixture, not universal CV coverage.
 
 ### 3. Distribution-Shift & Operational Drift (`cv_assurance.shift`)
-- **Domain Metrics**: Specific feature extraction across 4 operational dimensions:
+- **Domain Metrics**: Image-derived proxy feature extraction across 4 operational dimensions:
   - **Terrain**: Texture contrast & color histogram energy.
   - **Illumination**: Brightness, contrast, HSV value distribution, low-light/overexposure ratios.
   - **Sensor**: Noise floor variance, Laplacian blur estimate, PSNR estimates.
   - **Season/Acquisition**: Green Vegetation Index (ExG) and spectral hue shifts.
-- **Statistical Drift Detection**: Kolmogorov-Smirnov test & Wasserstein distance. Distinguishes natural operational drift from suspicious synthetic manipulation.
+- **Statistical Drift Detection**: Kolmogorov-Smirnov test & Wasserstein distance. Distinguishes operational drift from suspicious manipulation only under supported evidence rules; confidence is bounded heuristic evidence, not a calibrated probability, and image proxies are not semantic terrain/season classifiers.
+- **Shift Evidence and Governance**: Every dimension reports its feature proxy, KS statistic, p-value, Wasserstein distance, shift flag, sample sufficiency, bounded heuristic confidence, affected dataset asset, severity, disposition, and limitations through the JSON assurance report and tamper-evident audit chain.
 
 ### 4. Inference Provenance & Cryptographic Binding (`cv_assurance.provenance`)
-- **Existing Component**: `crypto_binding.py` provides cryptographic binding and verification structures for input, model, configuration, output, timestamp, and nonce.
-- **Milestone Status**: The provenance component exists and is covered by current integration tests, but completing the broader Module 3 provenance workflow, replay policy, audit integration, and final end-to-end validation is outside this completion milestone.
+- **Explicit Binding**: `ProtectedInferenceRecord` binds exact input bytes, model digest, preprocessing configuration, explicit inference configuration, canonical predictions, timestamp, nonce, and sequence through SHA-256 and HMAC-SHA256.
+- **Canonicalization & Verification**: Preprocessing and inference configurations are canonicalized independently; modifying either configuration invalidates its hash and the binding digest. Predictions are deterministically sorted and normalized.
+- **Replay Protection**: `ReplayProtectionRegistry` detects record-ID, nonce, binding-hash, and sequence reuse. A local JSON registry provides persistence across process restarts.
+- **Limitations**: Timestamp checks do not provide trusted-clock guarantees. The HMAC secret must be provisioned securely. Backward-compatible records without inference configuration retain the legacy binding form.
 
 ### 5. AI Assurance Governance & Analyst Dashboard (`cv_assurance.governance` & `app/`)
-- **Existing Governance Infrastructure**: Finding/report schemas and a master assurance engine are present, including evidence, confidence, severity, affected asset, and recommended disposition fields.
+- **Governance Findings**: Finding/report schemas and the master assurance engine expose human-readable reason, supporting evidence, heuristic confidence semantics, severity, affected asset, recommended disposition, known limitations, and a tamper-evident audit-chain summary. Output is machine-readable JSON.
 - **Existing Dashboard Components**: `app/server.py` and the static web UI expose the current assurance outputs.
 - **Milestone Status**: Governance and dashboard components remain available project infrastructure; final integration and blockchain/tamper-evident ledger completion are future work.
 
@@ -53,10 +58,11 @@ Module 2 is completed and validated for the repository's controlled PyTorch benc
 
 | Area | Status |
 | :--- | :--- |
-| Module 1 — Training-Data Integrity | **COMPLETED / VALIDATED** |
-| Module 2 — Model Integrity | **COMPLETED / VALIDATED** |
-| Module 3 — Provenance / Audit / Blockchain | **EXISTING COMPONENTS / FUTURE COMPLETION** |
-| Final End-to-End Integration | **NOT COMPLETED** |
+| Module 1 — Training-Data Integrity | **IMPLEMENTED / CONTROLLED-BENCHMARK TESTED** |
+| Module 2 — Model Integrity | **IMPLEMENTED / RUNTIME VALIDATION DEPENDS ON LOCAL DEPENDENCIES** |
+| Module 3A/3B — Provenance, Shift & Governance | **IMPLEMENTED / MANUALLY RUNTIME-VERIFIED** |
+| Blockchain | **NOT USED / OUT OF SCOPE** |
+| Final End-to-End Integration | **IMPLEMENTED WITH DOCUMENTED LIMITATIONS** |
 
 ---
 
@@ -103,10 +109,12 @@ ASSURANCE EVALUATION REPORT & DETECTION METRICS (TP, FP, FN, Precision, Recall, 
 | :--- | :--- |
 | **REAL DATA** | Authentic baseline imagery and annotations (VisDrone-DET / aerial domain). |
 | **SYNTHETIC ATTACKS** | Controlled, parameter-tracked integrity manipulations (flips, triggers, near-duplicates) used for evaluation. |
-| **GROUND TRUTH** | Immutable machine-readable record (`attack_manifest.json`) capturing exact injection labels and parameters. |
-| **DETECTOR OUTPUT** | Algorithmic findings generated by the framework without access to ground truth manifests. |
+| **ATTACK GENERATION TRUTH** | Reproducible machine-readable record (`attack_manifest.json`) capturing exact controlled injection labels and parameters; it is not independent real-world ground truth. |
+| **DETECTOR OUTPUT** | Algorithmic findings generated by the framework without access to attack manifests. |
 
 *Note: Synthetic attacks are controlled evaluation models and do not claim to represent every unconstrained real-world adversarial manipulation.*
+
+*Module 1 evaluation metrics are labelled synthetic/controlled benchmark metrics. Label-integrity results are heuristic visual-consensus findings unless trusted labels are separately supplied; unavailable independent ground-truth metrics are not manufactured.*
 
 ### 3. Directory Layout
 
@@ -309,15 +317,118 @@ Open `http://127.0.0.1:8000` in your web browser.
 
 ---
 
+## 🔒 Module 3A — Inference Provenance & Cryptographic Output Integrity
+
+Module 3A provides air-gapped, post-hoc cryptographic provenance and output integrity assurance for computer vision inference pipelines. It eliminates downstream trust assumptions by mathematically binding the entire inference lifecycle into a tamper-evident, authenticated record.
+
+```
+Input Image Bytes (SHA-256)
+Model File (SHA-256 via ModelHasher)
+Preprocessing Configuration (Canonical JSON + SHA-256)
+Inference Configuration (Canonical JSON + SHA-256, when supplied)
+Inference Predictions (Deterministic sorting + float normalization + SHA-256)
+UTC Timestamp + CSPRNG Nonce + Monotonic Sequence Number
+      ↓
+Canonical Binding Payload:
+  image_hash|model_hash|preprocess_hash|inference_hash|predictions_json|timestamp|nonce|sequence_number
+      ↓
+SHA-256 Binding Digest
+      ↓
+HMAC-SHA256 Signature (Constant-Time Verification)
+      ↓
+Protected Inference Record (JSON)
+      ↓
+Verification & Replay Registry Audit
+      ↓
+[PASS]  /  [TAMPER DETECTED]  /  [REPLAY DETECTED]
+```
+
+### 1. What is Bound
+Each protected inference record binds:
+1. **Input Image Integrity**: SHA-256 hash calculated over the exact raw input image bytes.
+2. **Model Integrity**: Exact SHA-256 weight digest generated via the integrated Module 2 `ModelHasher`.
+3. **Preprocessing Configuration**: Full parameterization (`resolution`, `resize_method`, `normalization`, `channel_ordering`, `confidence_threshold`, `nms_iou_threshold`, `max_detections`, `version`), deterministically serialized and hashed.
+4. **Inference Configuration**: Caller-supplied execution and post-processing settings such as inference mode, batch size, thresholds, and runtime options, serialized and hashed separately from preprocessing.
+5. **Output Prediction Integrity**: Bounding boxes, class IDs, class names, and confidence scores, canonically sorted and float-normalized.
+6. **Freshness & Stream Metadata**: Monotonic sequence number, 128-bit CSPRNG nonce (`secrets.token_hex(16)`), and UTC timestamps.
+
+### 2. How Hashes Work
+- **Images & Models**: Chunked streaming SHA-256 hashes (`hashlib.sha256()`) process large inputs with constant memory overhead.
+- **Configurations**: Serialized into canonical JSON with strictly sorted keys and compact delimiters (`separators=(',', ':')`), preventing dictionary ordering artifacts from invalidating hashes.
+- **Predictions**: Sorted deterministically by `(category_id, category_name, -confidence, box)` with coordinates rounded to 4 decimals and confidence to 6 decimals, ensuring platform float jitter does not break verification.
+
+### 3. How HMAC Authentication Works
+- The canonical string includes image hash, model hash, preprocessing hash, optional inference-configuration hash, predictions, timestamp, nonce, and sequence number; it is hashed with SHA-256 to produce `binding_hash_sha256`.
+- The binding digest is signed using `hmac.new(secret_key, binding_hash, hashlib.sha256)`.
+- Verification utilizes `hmac.compare_digest()` to execute in constant time, preventing timing side-channel attacks.
+- **Air-Gapped Key Provisioning**: The secret key is loaded from the constructor, `CV_INFERENCE_SECRET_KEY`, or a local file supplied through `secret_key_file` / `CV_INFERENCE_SECRET_KEY_FILE`. When unspecified, a fallback key is used and explicitly tagged as `DEMO_ONLY_AIRGAPPED_HMAC_SECRET_DO_NOT_USE_IN_PROD`; that fallback is demo-only and must not protect production records.
+
+### 4. How Offline Replay Detection Works
+- Handled by `ReplayProtectionRegistry`, a local, air-gapped registry with zero database server requirements. The default registry is process-local memory; supply `ReplayProtectionRegistry(registry_file=...)` or `replay_registry_file=...` to `AssuranceEngine` for restart persistence.
+- Tracks `record_id`, `nonce`, `sequence_number`, `timestamp_utc`, and `binding_hash_sha256`, rejects duplicate accepted records/nonces/bindings, and enforces the next sequence number in the configured single stream.
+- An inference record that has already been accepted is flagged as `REPLAY DETECTED`, preventing adversaries from intercepting past valid detections and re-submitting them.
+
+### 5. CLI Usage Examples
+
+#### Create a Protected Record (`bind-inference`)
+```bash
+# Using model file (SHA-256 computed automatically via ModelHasher)
+python -m cv_assurance.cli bind-inference \
+  --image demo_assets/sample_model.pt \
+  --model demo_assets/sample_model.pt \
+  --predictions demo_preds.json \
+  --output-json protected_record.json
+```
+
+#### Verify a Record (`verify-inference`)
+```bash
+# Verify cryptographic binding and register in replay registry
+python -m cv_assurance.cli verify-inference \
+  --record-json protected_record.json \
+  --image demo_assets/sample_model.pt \
+  --model demo_assets/sample_model.pt \
+  --registry data/replay_registry.json \
+  --register-on-success
+```
+
+#### Verify an Inference Chain (`verify-inference-chain`)
+```bash
+# Verify monotonic sequence ordering and cryptographic validity across a batch
+python -m cv_assurance.cli verify-inference-chain \
+  --records-json chain_records.json \
+  --registry data/replay_registry.json
+```
+
+### 6. Detectable Attack Vectors
+| Threat Scenario | Tampering Mechanism | Assurance Outcome | Violated Fields |
+| :--- | :--- | :---: | :--- |
+| **Image Alteration** | Adversarial patch, noise injection, or image swap | `FAIL` | `image_hash_sha256` |
+| **Model Substitution** | Trojaned or backdoored weight file substituted | `FAIL` | `model_digest_sha256` |
+| **Preprocessing Bypass** | Threshold lowered to induce false alarms | `FAIL` | `preprocessing_config` |
+| **Prediction Forgery** | Confidence boosted, box moved, or label changed | `FAIL` | `predictions` |
+| **Timestamp Manipulation** | Backdating or future-dating inference records | `FAIL` | `timestamp_utc` |
+| **Nonce Reuse Attack** | Submitting multiple inferences under one nonce | `FAIL` | `nonce`, `replay_detected` |
+| **Sequence Rollback** | Out-of-order execution or deleted stream items | `FAIL` | `sequence_number` |
+| **Signature Forgery** | Altering predictions without private HMAC key | `FAIL` | `binding_hash_sha256`, `hmac_signature` |
+| **Replay Attack** | Resubmitting previously captured valid record | `FAIL` | `replay_detected` |
+
+### 7. Limitations
+1. **Host-Level Compromise**: Provenance signatures prove that output was generated by the specified model from the specified input image under the recorded configuration. If the inference host itself is compromised at runtime, adversarial code could theoretically sign incorrect results using the local host key.
+2. **Key Protection**: The HMAC secret key must be provisioned securely into the air-gapped node (e.g. via hardware HSM or environment variable).
+3. **Trusted Time**: Timestamp integrity is cryptographically protected, but the system does not provide a trusted external clock or clock-skew guarantee.
+4. **Backward Compatibility**: Records created without `inference_config` remain verifiable using the legacy binding form; new records should supply inference settings explicitly.
+
+---
+
 ## 🧪 Verification & Unit Tests
 
-Run the complete 31-test suite covering baseline integrity modules, Module 1 attack/regression coverage, governance integration, and dedicated Module 2 model-integrity tests:
+Run the complete unittest suite covering baseline integrity modules, Module 1 attack/regression coverage, governance integration, and dedicated Module 2/Module 3 provenance tests:
 
 ```bash
 python -m unittest discover -s tests
 ```
 
-Verified status: **31 tests, 31 passed**.
+Manual validation status supplied for this repository: **103 tests, 103 passed**, including Module 3B focused validation (**37/37 passed**). Runtime results are reported as manually verified; confidence and environmental semantics remain subject to the limitations above.
 
 ---
 

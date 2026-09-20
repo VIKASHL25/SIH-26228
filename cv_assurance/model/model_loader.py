@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import os
 
 
 class DummyCVModel(nn.Module):
@@ -46,3 +47,68 @@ def load_sample_model(model_path: str) -> DummyCVModel:
     model.eval()
 
     return model
+
+
+class ModelExecutionUnavailable(RuntimeError):
+    """Raised when a model artifact cannot be executed by an offline adapter."""
+
+
+class OnnxModelAdapter(nn.Module):
+    """Small offline ONNX-to-torch adapter for the fingerprinting API."""
+
+    def __init__(self, model_path: str):
+        super().__init__()
+        try:
+            import onnxruntime as ort
+        except ImportError as exc:
+            raise ModelExecutionUnavailable(
+                "ONNX behavioral execution unavailable: onnxruntime is not installed."
+            ) from exc
+        self.session = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
+        inputs = self.session.get_inputs()
+        if not inputs:
+            raise ModelExecutionUnavailable("ONNX model has no executable inputs.")
+        self.input_name = inputs[0].name
+
+    def forward(self, x):
+        output = self.session.run(None, {self.input_name: x.detach().cpu().numpy()})[0]
+        return torch.as_tensor(output)
+
+
+def load_model_for_inference(model_path: str):
+    """Load a supported artifact for actual offline inference.
+
+    The repository can reconstruct its bundled PyTorch state-dict architecture,
+    load TorchScript directly, and execute ONNX when onnxruntime is installed.
+    Other checkpoint architectures are reported unavailable rather than being
+    silently replaced with the demo model.
+    """
+    if not os.path.isfile(model_path):
+        raise FileNotFoundError(f"Model file not found: {model_path}")
+
+    extension = os.path.splitext(model_path)[1].lower()
+    if extension in (".ts", ".torchscript"):
+        try:
+            model = torch.jit.load(model_path, map_location="cpu")
+        except Exception as exc:
+            raise ModelExecutionUnavailable(
+                f"TorchScript behavioral execution unavailable: {exc}"
+            ) from exc
+        model.eval()
+        return model, "torchscript"
+
+    if extension == ".onnx":
+        return OnnxModelAdapter(model_path), "onnx"
+
+    if extension in (".pt", ".pth", ".ckpt", ".bin"):
+        try:
+            return load_sample_model(model_path), "pytorch_white_box"
+        except Exception as exc:
+            raise ModelExecutionUnavailable(
+                "PyTorch behavioral execution unavailable: the checkpoint does "
+                "not match the bundled/demo architecture and no caller loader was supplied."
+            ) from exc
+
+    raise ModelExecutionUnavailable(
+        f"Behavioral execution unavailable for unsupported model extension: {extension}"
+    )

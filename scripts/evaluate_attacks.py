@@ -36,6 +36,8 @@ def compute_detailed_binary_metrics(
     f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
     specificity = tn / (tn + fp) if (tn + fp) > 0 else 1.0
     fpr = fp / (fp + tn) if (fp + tn) > 0 else 0.0
+    fnr = fn / (fn + tp) if (fn + tp) > 0 else None
+    detection_rate = recall if (tp + fn) > 0 else None
     accuracy = (tp + tn) / len(all_samples) if len(all_samples) > 0 else 0.0
 
     return {
@@ -48,6 +50,8 @@ def compute_detailed_binary_metrics(
         "f1_score": round(float(f1), 4),
         "specificity": round(float(specificity), 4),
         "false_positive_rate": round(float(fpr), 4),
+        "false_negative_rate": round(float(fnr), 4) if fnr is not None else None,
+        "detection_rate": round(float(detection_rate), 4) if detection_rate is not None else None,
         "accuracy": round(float(accuracy), 4)
     }
 
@@ -73,6 +77,7 @@ def run_evaluation(
     # 1. Ingest evaluation dataset & ground truth
     dataset = DatasetIngester.auto_ingest(dataset_path)
     gt_manifest = GroundTruthManifest.load(ground_truth_manifest_path)
+    ref_ds = DatasetIngester.auto_ingest(ref_dataset_path) if ref_dataset_path and os.path.exists(ref_dataset_path) else None
 
     all_sample_ids = {s.sample_id for s in gt_manifest.samples}
 
@@ -104,7 +109,7 @@ def run_evaluation(
             # Near-duplicate FLOODING is a same-contributor attack (one contributor
             # submitting many copies). Cross-contributor similarity (e.g. distribution
             # shift variants vs originals) is a separate concern, not flooding.
-            if pair.contributor_a == pair.contributor_b:
+            if pair.contributor_a is not None and pair.contributor_a == pair.contributor_b:
                 pred_duplicates.add(pair.sample_id_a)
                 pred_duplicates.add(pair.sample_id_b)
 
@@ -122,7 +127,8 @@ def run_evaluation(
     ood_detector = OODDetector()
     ood_res = ood_detector.analyze(
         dataset,
-        contamination=calib_set.ood.contamination_rate
+        contamination=calib_set.ood.contamination_rate,
+        reference_dataset=ref_ds
     )
     pred_ood = {o.sample_id for o in ood_res.ood_samples}
 
@@ -146,8 +152,7 @@ def run_evaluation(
     # Detector 6: Distribution Shift Detector
     shift_res = None
     shift_detected = False
-    if ref_dataset_path and os.path.exists(ref_dataset_path):
-        ref_ds = DatasetIngester.auto_ingest(ref_dataset_path)
+    if ref_ds is not None:
         shift_detector = DistributionShiftDetector()
         shift_res = shift_detector.analyze(ref_ds, dataset)
         shift_detected = shift_res.material_shift_detected
@@ -211,8 +216,8 @@ def run_evaluation(
     print("\n" + "=" * 78)
     print("                     EVALUATION METRICS TABLE")
     print("=" * 78)
-    print(f"{'Attack / Anomaly Category':<27} | {'TP':>3} | {'FP':>3} | {'FN':>3} | {'Prec':>6} | {'Recall':>6} | {'F1':>6} | {'FPR':>6}")
-    print("-" * 78)
+    print(f"{'Attack / Anomaly Category':<27} | {'TP':>3} | {'FP':>3} | {'FN':>3} | {'Prec':>6} | {'Recall':>6} | {'F1':>6} | {'FPR':>6} | {'FNR':>6} | {'Det':>6}")
+    print("-" * 102)
 
     rows = [
         ("Near-Duplicate Flooding", dup_m),
@@ -225,7 +230,9 @@ def run_evaluation(
     ]
 
     for name, m in rows:
-        print(f"{name:<27} | {m['TP']:>3} | {m['FP']:>3} | {m['FN']:>3} | {m['precision']:>6.2f} | {m['recall']:>6.2f} | {m['f1_score']:>6.2f} | {m['false_positive_rate']:>6.2f}")
+        fnr = "N/A" if m["false_negative_rate"] is None else f"{m['false_negative_rate']:.2f}"
+        det = "N/A" if m["detection_rate"] is None else f"{m['detection_rate']:.2f}"
+        print(f"{name:<27} | {m['TP']:>3} | {m['FP']:>3} | {m['FN']:>3} | {m['precision']:>6.2f} | {m['recall']:>6.2f} | {m['f1_score']:>6.2f} | {m['false_positive_rate']:>6.2f} | {fnr:>6} | {det:>6}")
 
     print("-" * 78)
     print(f"{'MACRO AVERAGE (Core 4)':<27} | {'-':>3} | {'-':>3} | {'-':>3} | {macro_precision:>6.2f} | {macro_recall:>6.2f} | {macro_f1:>6.2f} | {'-':>6}")
@@ -260,6 +267,31 @@ def run_evaluation(
             "total_annotations": dataset.total_annotations
         },
         "calibration": calib_set.model_dump(),
+        "ground_truth_provenance": {
+            "type": "synthetic_controlled_attack_manifest",
+            "independent_ground_truth": False,
+            "attack_generation_truth": True,
+            "detector_output_is_separate": True,
+            "note": "Metrics quantify agreement with the reproducible attack manifest; they are not independent real-world validation."
+        },
+        "evaluation_scope": {
+            "label_integrity": {
+                "scope": "first_bounding_box_per_sample",
+                "trusted_label_verification": label_res.trusted_label_verification,
+                "class_counts": label_res.class_counts,
+                "minimum_class_sample_requirement": label_res.minimum_class_sample_requirement,
+                "confidence_semantics": label_res.confidence_semantics
+            },
+            "ood": {
+                "analysis_mode": ood_res.analysis_mode,
+                "trusted_reference_used": ood_res.trusted_reference_used,
+                "reference_sample_count": ood_res.reference_sample_count
+            },
+            "duplicates": {
+                "cross_contributor_pairs_count": dup_res.cross_contributor_pairs_count,
+                "cross_contributor_sample_ids": dup_res.cross_contributor_sample_ids
+            }
+        },
         "metrics": {
             "near_duplicate_flooding": dup_m,
             "label_manipulation": lbl_m,
@@ -298,7 +330,10 @@ def run_evaluation(
         "limitations": [
             "Perceptual hashing and SSIM confirmation assume geometric alignment without arbitrary perspective warping.",
             "k-NN label integrity requires sufficient class representations (>= 5 samples per evaluated category).",
-            "Spectral trigger detection is optimized for periodic Fourier carrier frequencies."
+            "Spectral trigger detection is optimized for periodic Fourier carrier frequencies.",
+            "Label-integrity findings are visual-consensus heuristics, not trusted-label verification.",
+            "OOD metrics are reference-vs-target only when a clean reference has at least five readable samples; otherwise they are relative dataset anomaly metrics.",
+            "Attack-manifest metrics are synthetic/controlled benchmark results, not independent ground-truth validation."
         ]
     }
 

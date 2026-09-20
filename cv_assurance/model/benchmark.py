@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from .hasher import ModelHasher
 from .whitebox_analyzer import WhiteBoxAnalyzer
 from .backdoor_probe import ModelBackdoorProbe
-from .fingerprint import ModelFingerprinter
+from .fingerprint import ModelFingerprinter, BehavioralComparisonResult
 
 
 class ModelIntegrityAssessment(BaseModel):
@@ -24,6 +24,10 @@ class ModelIntegrityAssessment(BaseModel):
     reference_hash_match: bool
     model_type: str
     whitebox_available: bool
+    behavioral_execution_available: bool = True
+    access_mode: str = "unknown"
+    confidence_semantics: str = "heuristic_evidence_derived_not_calibrated_probability"
+    limitations: List[str] = Field(default_factory=list)
 
     # --------------------------------------------------
     # White-box analysis
@@ -64,6 +68,7 @@ class ModelIntegrityAssessment(BaseModel):
 
     evidence_score: float
     confidence: str
+    confidence_score: float = 0.0
 
     disposition: str
     severity: str
@@ -156,7 +161,8 @@ class Module2Benchmark:
 
         whitebox_result = (
             self.whitebox.analyze_weights(
-                model_path
+                model_path,
+                reference_model_path=self.reference_model
             )
         )
 
@@ -169,34 +175,65 @@ class Module2Benchmark:
         # 3. CONTROLLED TRIGGER PROBE
         # ==================================================
 
-        probe_result = self.probe.probe(
-            reference_model_path=self.reference_model,
-            candidate_model_path=model_path,
-            image_paths=images,
-            trigger_type=trigger_type,
-            target_class=target_class
-        )
+        probe_available = True
+        probe_limitation = None
+        try:
+            probe_result = self.probe.probe(
+                reference_model_path=self.reference_model,
+                candidate_model_path=model_path,
+                image_paths=images,
+                trigger_type=trigger_type,
+                target_class=target_class
+            )
+        except Exception as exc:
+            probe_available = False
+            probe_limitation = f"Trigger probing unavailable: {exc}"
+            probe_result = None
 
-        trigger_behavior = (
-            probe_result.suspicious_behavior_detected
-        )
+        trigger_behavior = bool(probe_result and probe_result.suspicious_behavior_detected)
 
         # ==================================================
         # 4. BEHAVIORAL FINGERPRINT
         # ==================================================
 
-        fingerprint_result = (
-            self.fingerprinter.compare_models(
+        fingerprint_available = True
+        fingerprint_limitation = None
+        try:
+            fingerprint_result = self.fingerprinter.compare_models(
                 reference_model_path=self.reference_model,
                 candidate_model_path=model_path,
                 dataset=images,
                 num_eval=len(images)
             )
-        )
+        except Exception as exc:
+            fingerprint_available = False
+            fingerprint_limitation = f"Behavioral comparison unavailable: {exc}"
+            fingerprint_result = BehavioralComparisonResult(
+                reference_model=os.path.basename(self.reference_model),
+                candidate_model=os.path.basename(model_path),
+                total_eval_samples=0,
+                prediction_agreement=0.0,
+                reference_average_confidence=0.0,
+                candidate_average_confidence=0.0,
+                confidence_deviation=0.0,
+                reference_entropy=0.0,
+                candidate_entropy=0.0,
+                entropy_deviation=0.0,
+                behavioral_deviation_score=0.0,
+                anomalous_behavior_detected=False,
+                execution_available=False,
+                access_mode="unavailable",
+                findings_summary="Behavioral comparison unavailable; no synthetic predictions were substituted."
+            )
 
         fingerprint_behavior = (
             fingerprint_result.anomalous_behavior_detected
         )
+        fingerprint_available = bool(
+            fingerprint_available and fingerprint_result.execution_available
+        )
+        if not fingerprint_available and not fingerprint_limitation:
+            fingerprint_limitation = "Behavioral comparison returned UNAVAILABLE execution status."
 
         # ==================================================
         # 5. EVIDENCE FUSION
@@ -216,7 +253,7 @@ class Module2Benchmark:
 
             findings.append(
                 "Model file SHA-256 differs from "
-                "the trusted reference."
+                "the trusted reference; this proves byte difference, not malicious intent."
             )
 
         else:
@@ -236,7 +273,8 @@ class Module2Benchmark:
 
             findings.append(
                 "White-box analysis detected "
-                "parameter-level anomalies."
+                "parameter-level anomalies. "
+                f"Evidence basis: {whitebox_result.evidence_basis}."
             )
 
         else:
@@ -259,8 +297,12 @@ class Module2Benchmark:
                 "suspicious model-level behavior."
             )
 
+        elif not probe_available:
+            findings.append(
+                "Trigger probing was unavailable for this model format/runtime; "
+                "no clean or backdoor-like conclusion was drawn."
+            )
         else:
-
             findings.append(
                 "No strong trigger-specific behavioral "
                 "anomaly was detected under the "
@@ -281,8 +323,12 @@ class Module2Benchmark:
                 "reference model."
             )
 
+        elif not fingerprint_available:
+            findings.append(
+                "Behavioral fingerprint comparison was unavailable for this "
+                "model format/runtime; no behavioral conclusion was drawn."
+            )
         else:
-
             findings.append(
                 "Behavioral fingerprint is closely "
                 "aligned with the trusted reference."
@@ -297,18 +343,19 @@ class Module2Benchmark:
         # 6. CONFIDENCE / DISPOSITION
         # ==================================================
 
-        # Controlled benchmark ground truth.
-        if scenario == "substituted":
+        confidence_score = round(min(1.0, evidence_score * 0.75 + (
+            fingerprint_result.total_eval_samples / max(1, len(images))
+        ) * 0.25), 4)
+        confidence = "HEURISTIC_EVIDENCE_DERIVED"
 
-            confidence = "HIGH"
+        # Controlled benchmark disposition policy.
+        if scenario == "substituted":
 
             disposition = (
                 "MODEL_SUBSTITUTION"
             )
 
         elif trigger_behavior:
-
-            confidence = "HIGH"
 
             disposition = (
                 "SUSPICIOUS_MODEL_BEHAVIOR"
@@ -318,15 +365,11 @@ class Module2Benchmark:
             hash_result.reference_match is False
         ):
 
-            confidence = "HIGH"
-
             disposition = (
                 "MODEL_INTEGRITY_ANOMALY"
             )
 
         elif fingerprint_behavior:
-
-            confidence = "MEDIUM"
 
             disposition = (
                 "BEHAVIORAL_ANOMALY"
@@ -334,23 +377,17 @@ class Module2Benchmark:
 
         elif parameter_anomaly:
 
-            confidence = "MEDIUM"
-
             disposition = (
                 "PARAMETER_ANOMALY"
             )
 
         elif hash_result.reference_match is False:
 
-            confidence = "MEDIUM"
-
             disposition = (
                 "FILE_INTEGRITY_MISMATCH"
             )
 
         else:
-
-            confidence = "HIGH"
 
             disposition = (
                 "NO_ANOMALY_DETECTED"
@@ -375,6 +412,10 @@ class Module2Benchmark:
             ),
             model_type=hash_result.format,
             whitebox_available=whitebox_result.access_granted,
+            behavioral_execution_available=fingerprint_available,
+            access_mode=fingerprint_result.access_mode,
+            confidence_semantics="heuristic_evidence_derived_not_calibrated_probability",
+            limitations=[item for item in (probe_limitation, fingerprint_limitation) if item],
 
             # White-box
             weight_anomaly_score=(
@@ -387,15 +428,15 @@ class Module2Benchmark:
 
             # Trigger probe
             trigger_prediction_change_rate=(
-                probe_result.prediction_change_rate
+                probe_result.prediction_change_rate if probe_result else 0.0
             ),
 
             trigger_target_rate=(
-                probe_result.target_class_rate
+                probe_result.target_class_rate if probe_result else 0.0
             ),
 
             trigger_confidence_change=(
-                probe_result.mean_confidence_change
+                probe_result.mean_confidence_change if probe_result else 0.0
             ),
 
             # Fingerprint
@@ -436,6 +477,7 @@ class Module2Benchmark:
             ),
 
             confidence=confidence,
+            confidence_score=confidence_score,
 
             disposition=disposition,
             severity=("CRITICAL" if trigger_behavior or hash_result.reference_match is False else "INFO"),

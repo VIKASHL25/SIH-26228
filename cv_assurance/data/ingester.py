@@ -4,6 +4,7 @@ import glob
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
+import cv2
 
 class BoundingBox(BaseModel):
     x: float
@@ -20,8 +21,9 @@ class IngestedSample(BaseModel):
     width: int
     height: int
     boxes: List[BoundingBox] = Field(default_factory=list)
-    contributor_id: str = "unknown"
-    batch_id: str = "default_batch"
+    contributor_id: Optional[str] = None
+    batch_id: Optional[str] = None
+    source_id: Optional[str] = None
     format: str = "coco" # "coco", "yolo", "visdrone", "manifest"
     is_attacked: bool = False
     attack_type: Optional[str] = None
@@ -36,6 +38,12 @@ class IngestedDataset(BaseModel):
     samples: List[IngestedSample]
     total_samples: int
     total_annotations: int
+
+    def __getitem__(self, item):
+        return self.samples[item]
+
+    def __len__(self):
+        return len(self.samples)
 
 class DatasetIngester:
     """Ingests COCO, YOLO, VisDrone, or Benchmark Manifest datasets into a unified dataset structure."""
@@ -85,8 +93,9 @@ class DatasetIngester:
             total_annotations += len(boxes)
             
             # Extract contributor / batch metadata if available
-            contributor = img.get('contributor', img.get('source_contributor', 'contributor_alpha'))
-            batch = img.get('batch_id', img.get('batch', 'batch_01'))
+            contributor = img.get('contributor', img.get('source_contributor'))
+            batch = img.get('batch_id', img.get('batch'))
+            source = img.get('source_id', img.get('source'))
             is_attacked = img.get('is_attacked', False)
             attack_type = img.get('attack_type', None)
             is_shifted = img.get('is_shifted', False)
@@ -100,6 +109,7 @@ class DatasetIngester:
                 boxes=boxes,
                 contributor_id=contributor,
                 batch_id=batch,
+                source_id=source,
                 format="coco",
                 is_attacked=is_attacked,
                 attack_type=attack_type,
@@ -170,8 +180,9 @@ class DatasetIngester:
                 width=640,
                 height=640,
                 boxes=boxes,
-                contributor_id=s.get("contributor", "unknown"),
-                batch_id=s.get("batch_id", "default_batch"),
+                contributor_id=s.get("contributor"),
+                batch_id=s.get("batch_id"),
+                source_id=s.get("source_id", s.get("source")),
                 format="manifest",
                 is_attacked=s.get("is_attacked", False),
                 attack_type=s.get("attack_type"),
@@ -201,6 +212,7 @@ class DatasetIngester:
         """
         data_yaml_path = os.path.join(yolo_dir, "data.yaml")
         categories = {}
+        dataset_metadata: Dict[str, Any] = {}
         if os.path.exists(data_yaml_path):
             try:
                 import yaml
@@ -211,8 +223,24 @@ class DatasetIngester:
                         categories = {idx: name for idx, name in enumerate(names)}
                     elif isinstance(names, dict):
                         categories = {int(k): str(v) for k, v in names.items()}
+                    dataset_metadata = yaml_data if isinstance(yaml_data, dict) else {}
             except Exception:
                 pass
+
+        # Optional metadata is deliberately opt-in.  A YOLO directory does not
+        # establish contributor/source identity by itself.
+        metadata_by_file: Dict[str, Dict[str, Any]] = {}
+        metadata_path = os.path.join(yolo_dir, "metadata.json")
+        if os.path.exists(metadata_path):
+            try:
+                with open(metadata_path, "r", encoding="utf-8") as f:
+                    raw_metadata = json.load(f)
+                if isinstance(raw_metadata, dict):
+                    candidate_metadata = raw_metadata.get("images", raw_metadata)
+                    if isinstance(candidate_metadata, dict):
+                        metadata_by_file = candidate_metadata
+            except (OSError, json.JSONDecodeError):
+                metadata_by_file = {}
                 
         # Find images
         image_extensions = ['*.jpg', '*.jpeg', '*.png', '*.bmp']
@@ -223,8 +251,14 @@ class DatasetIngester:
         samples = []
         total_annotations = 0
         
-        for idx, img_path in enumerate(image_paths):
+        for idx, img_path in enumerate(sorted(image_paths)):
             file_name = os.path.basename(img_path)
+            image = cv2.imread(img_path)
+            if image is None:
+                # Do not manufacture a sample or dimensions for an unreadable
+                # image.  The label file alone is not an ingestible sample.
+                continue
+            image_height, image_width = image.shape[:2]
             # Find corresponding label file
             base_name = os.path.splitext(file_name)[0]
             parent_dir = os.path.dirname(img_path)
@@ -239,32 +273,45 @@ class DatasetIngester:
                 with open(label_path, 'r', encoding='utf-8') as f:
                     for line in f:
                         parts = line.strip().split()
-                        if len(parts) >= 5:
+                        if len(parts) < 5:
+                            continue
+                        try:
                             cat_id = int(parts[0])
-                            cx, cy, w, h = map(float, parts[1:5])
-                            cat_name = categories.get(cat_id, f"class_{cat_id}")
-                            boxes.append(BoundingBox(
-                                x=cx - w / 2,
-                                y=cy - h / 2,
-                                width=w,
-                                height=h,
-                                category_id=cat_id,
-                                category_name=cat_name
-                            ))
+                            cx, cy, norm_w, norm_h = map(float, parts[1:5])
+                        except (TypeError, ValueError):
+                            continue
+                        if not (0.0 <= cx <= 1.0 and 0.0 <= cy <= 1.0 and
+                                0.0 <= norm_w <= 1.0 and 0.0 <= norm_h <= 1.0):
+                            continue
+                        box_width = norm_w * image_width
+                        box_height = norm_h * image_height
+                        box_x = (cx * image_width) - (box_width / 2.0)
+                        box_y = (cy * image_height) - (box_height / 2.0)
+                        cat_name = categories.get(cat_id, f"class_{cat_id}")
+                        boxes.append(BoundingBox(
+                            x=box_x, y=box_y, width=box_width,
+                            height=box_height, category_id=cat_id,
+                            category_name=cat_name
+                        ))
                             
             total_annotations += len(boxes)
-            contributor = "contributor_alpha" if idx % 2 == 0 else "contributor_beta"
-            batch = f"batch_{(idx // 50) + 1:02d}"
+            metadata = metadata_by_file.get(file_name, {})
+            if not isinstance(metadata, dict):
+                metadata = {}
+            contributor = metadata.get("contributor_id", metadata.get("contributor", dataset_metadata.get("contributor_id")))
+            batch = metadata.get("batch_id", metadata.get("batch", dataset_metadata.get("batch_id")))
+            source = metadata.get("source_id", metadata.get("source", dataset_metadata.get("source_id", dataset_metadata.get("source"))))
             
             samples.append(IngestedSample(
                 sample_id=f"yolo_{idx+1}",
                 image_path=img_path,
                 file_name=file_name,
-                width=640,
-                height=640,
+                width=image_width,
+                height=image_height,
                 boxes=boxes,
                 contributor_id=contributor,
                 batch_id=batch,
+                source_id=source,
                 format="yolo"
             ))
             

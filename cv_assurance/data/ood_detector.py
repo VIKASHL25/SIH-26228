@@ -11,8 +11,8 @@ class OODSample(BaseModel):
     sample_id: str
     file_name: str
     anomaly_score: float # 0.0 to 1.0 (higher = more out of distribution)
-    contributor_id: str
-    batch_id: str
+    contributor_id: Optional[str] = None
+    batch_id: Optional[str] = None
     detection_method: str
     description: str
 
@@ -22,6 +22,9 @@ class OODAnalysisResult(BaseModel):
     ood_ratio: float
     contamination_level: float
     ood_samples: List[OODSample]
+    analysis_mode: str = "relative_dataset_anomaly"
+    reference_sample_count: int = 0
+    trusted_reference_used: bool = False
 
 class OODDetector:
     """Detects Out-Of-Distribution (OOD) data samples inserted into dataset."""
@@ -49,7 +52,12 @@ class OODDetector:
         feat = np.concatenate([mean_val, std_val, hist_flat, lap_var])
         return feat
 
-    def analyze(self, dataset: IngestedDataset, contamination: float = 0.1) -> OODAnalysisResult:
+    def analyze(
+        self,
+        dataset: IngestedDataset,
+        contamination: float = 0.1,
+        reference_dataset: Optional[IngestedDataset] = None,
+    ) -> OODAnalysisResult:
         samples = dataset.samples
         if len(samples) < 5:
             return OODAnalysisResult(
@@ -57,7 +65,10 @@ class OODDetector:
                 ood_samples_count=0,
                 ood_ratio=0.0,
                 contamination_level=contamination,
-                ood_samples=[]
+                ood_samples=[],
+                analysis_mode="reference_vs_target" if reference_dataset else "relative_dataset_anomaly",
+                reference_sample_count=len(reference_dataset.samples) if reference_dataset else 0,
+                trusted_reference_used=reference_dataset is not None,
             )
 
         features = []
@@ -75,14 +86,31 @@ class OODDetector:
                 ood_samples_count=0,
                 ood_ratio=0.0,
                 contamination_level=contamination,
-                ood_samples=[]
+                ood_samples=[],
+                analysis_mode="reference_vs_target" if reference_dataset else "relative_dataset_anomaly",
+                reference_sample_count=0,
+                trusted_reference_used=False
             )
 
         X = np.array(features)
-        
-        # Fit Isolation Forest
+
+        reference_features = []
+        if reference_dataset is not None:
+            for ref_sample in reference_dataset.samples:
+                ref_feat = self.extract_features(ref_sample.image_path)
+                if ref_feat is not None:
+                    reference_features.append(ref_feat)
+
+        # With a reference, fit only on the clean reference distribution and
+        # score the target. Without one, this remains relative anomaly
+        # detection within the evaluated dataset.
+        fit_X = np.array(reference_features) if len(reference_features) >= 5 else X
+        analysis_mode = "reference_vs_target" if len(reference_features) >= 5 else "relative_dataset_anomaly"
+        trusted_reference_used = analysis_mode == "reference_vs_target"
+
         iso_forest = IsolationForest(contamination=contamination, random_state=42)
-        preds = iso_forest.fit_predict(X)
+        iso_forest.fit(fit_X)
+        preds = iso_forest.predict(X)
         scores = -iso_forest.score_samples(X) # Higher score = more anomalous
         
         # Normalize scores to 0.0 - 1.0
@@ -115,5 +143,8 @@ class OODDetector:
             ood_ratio=round(ood_ratio, 4),
             contamination_level=contamination,
             ood_samples=ood_list
+            ,analysis_mode=analysis_mode
+            ,reference_sample_count=len(reference_features)
+            ,trusted_reference_used=trusted_reference_used
         )
 

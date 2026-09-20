@@ -61,7 +61,7 @@ async def run_demo_analysis():
         model_path=model_pt,
         ref_dataset_path=ref_coco
     )
-    return JSONResponse(content=report.model_dump())
+    return JSONResponse(content=report.model_dump(mode='json'))
 
 @app.post("/api/verify_inference_record")
 async def verify_record_endpoint(record: dict):
@@ -69,7 +69,7 @@ async def verify_record_endpoint(record: dict):
     try:
         rec = ProtectedInferenceRecord(**record)
         res = prov_engine.verify_record(rec)
-        return res.model_dump()
+        return JSONResponse(content=res.model_dump(mode='json'))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -88,7 +88,7 @@ async def create_record_endpoint(
             config_dict={"resolution": [640, 640]},
             predictions=preds
         )
-        return rec.model_dump()
+        return JSONResponse(content=rec.model_dump(mode='json'))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

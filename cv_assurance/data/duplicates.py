@@ -15,8 +15,8 @@ class DuplicatePair(BaseModel):
     duplicate_type: str # "exact_sha256", "confirmed_near_duplicate", "perceptual_candidate"
     ssim_score: float = 1.0
     pixel_mae: float = 0.0
-    contributor_a: str
-    contributor_b: str
+    contributor_a: Optional[str] = None
+    contributor_b: Optional[str] = None
     is_confirmed: bool = True
 
 class ContributorFloodingStats(BaseModel):
@@ -34,6 +34,8 @@ class DuplicateAnalysisResult(BaseModel):
     flooding_risk_score: float # 0.0 to 1.0
     duplicate_pairs: List[DuplicatePair] = Field(default_factory=list)
     contributor_flooding_stats: List[ContributorFloodingStats] = Field(default_factory=list)
+    cross_contributor_pairs_count: int = 0
+    cross_contributor_sample_ids: List[str] = Field(default_factory=list)
 
 class DuplicateDetector:
     """
@@ -229,7 +231,7 @@ class DuplicateDetector:
         # Build per-contributor duplicate counts from same-contributor pairs only
         contrib_dup_ids: Dict[str, set] = {cid: set() for cid in contrib_samples}
         for pair in duplicate_pairs:
-            if pair.is_confirmed and pair.contributor_a == pair.contributor_b:
+            if pair.is_confirmed and pair.contributor_a is not None and pair.contributor_a == pair.contributor_b:
                 cid = pair.contributor_a
                 if cid in contrib_dup_ids:
                     contrib_dup_ids[cid].add(pair.sample_id_a)
@@ -252,6 +254,18 @@ class DuplicateDetector:
                 is_flooding_suspected=is_flooding
             ))
 
+        cross_contributor_pairs = [
+            pair for pair in duplicate_pairs
+            if pair.is_confirmed and (
+                pair.contributor_a is None or pair.contributor_b is None or
+                pair.contributor_a != pair.contributor_b
+            )
+        ]
+        cross_contributor_sample_ids = sorted({
+            sample_id
+            for pair in cross_contributor_pairs
+            for sample_id in (pair.sample_id_a, pair.sample_id_b)
+        })
         dup_count = len(flagged_sample_ids)
         flooding_risk = float(dup_count / n) if n > 0 else 0.0
 
@@ -261,6 +275,8 @@ class DuplicateDetector:
             duplicate_samples_count=dup_count,
             flooding_risk_score=round(flooding_risk, 4),
             duplicate_pairs=duplicate_pairs,
-            contributor_flooding_stats=contrib_flooding_stats
+            contributor_flooding_stats=contrib_flooding_stats,
+            cross_contributor_pairs_count=len(cross_contributor_pairs),
+            cross_contributor_sample_ids=cross_contributor_sample_ids
         )
 

@@ -8,12 +8,13 @@ import torch.nn.functional as F
 from pydantic import BaseModel
 
 from ..data.ingester import IngestedDataset
-from .model_loader import load_sample_model
+from .model_loader import load_model_for_inference
 
 
 class BehavioralFingerprintResult(BaseModel):
     model_name: str
     access_mode: str
+    execution_available: bool = True
 
     total_eval_samples: int
 
@@ -26,6 +27,9 @@ class BehavioralFingerprintResult(BaseModel):
     calibration_error_score: Optional[float] = None
 
     prediction_stability_score: float
+    confidence_std: float = 0.0
+    sensitivity_score: Optional[float] = None
+    calibration_status: str = "unavailable_without_ground_truth_labels"
 
     anomalous_behavior_detected: bool
 
@@ -53,6 +57,9 @@ class BehavioralComparisonResult(BaseModel):
     behavioral_deviation_score: float
 
     anomalous_behavior_detected: bool
+    execution_available: bool = True
+    access_mode: str = "white_box"
+    confidence_semantics: str = "heuristic_reference_deviation_not_calibrated_probability"
 
     findings_summary: str
 
@@ -213,6 +220,7 @@ class ModelFingerprinter:
         if not predictions:
             return BehavioralFingerprintResult(
                 model_name=model_name, access_mode=access_mode, total_eval_samples=0,
+                execution_available=False,
                 average_confidence=0.0, confidence_entropy=0.0, class_distribution={},
                 calibration_error_score=None, prediction_stability_score=0.0,
                 anomalous_behavior_detected=True,
@@ -231,6 +239,7 @@ class ModelFingerprinter:
             average_confidence=round(float(conf.mean()), 4), confidence_entropy=round(float(entropy.mean()), 4),
             class_distribution=distribution, calibration_error_score=None,
             prediction_stability_score=round(max(0.0, min(1.0, 1.0 - float(conf.std()))), 4),
+            confidence_std=round(float(conf.std()), 4),
             anomalous_behavior_detected=anomaly, findings_summary=summary)
 
     def fingerprint_callable(self, predict_fn: Any, dataset: Any, num_eval: int = 50,
@@ -248,17 +257,17 @@ class ModelFingerprinter:
 
     def fingerprint_dummy_or_callable(self, predict_fn: Any, dataset: Any,
                                       num_eval: int = 50) -> BehavioralFingerprintResult:
-        """Backward-compatible governance adapter.
-
-        Governance historically called this method without a model object. In
-        that case use the repository's deterministic demo model; when a
-        predictor is supplied, use the explicit black-box path.
-        """
-        if predict_fn is not None:
+        """Backward-compatible entry point without dummy-model fallback."""
+        if isinstance(predict_fn, str) and os.path.exists(predict_fn):
+            return self.fingerprint_model(predict_fn, dataset, num_eval=num_eval)
+        if callable(predict_fn):
             return self.fingerprint_callable(predict_fn, dataset, num_eval)
-        demo_path = os.path.abspath(os.path.join(
-            os.path.dirname(__file__), "..", "..", "demo_assets", "sample_model.pt"))
-        return self.fingerprint_model(demo_path, dataset, num_eval, model_name="demo-reference")
+        return BehavioralFingerprintResult(
+            model_name="unavailable", access_mode="unavailable", total_eval_samples=0,
+            average_confidence=0.0, confidence_entropy=0.0, class_distribution={},
+            prediction_stability_score=0.0, anomalous_behavior_detected=False,
+            findings_summary="Behavioral fingerprint unavailable; no dummy predictions were generated."
+        )
 
     def fingerprint_model(
         self,
@@ -275,9 +284,22 @@ class ModelFingerprinter:
             - list of image paths
         """
 
-        model = load_sample_model(
-            model_path
-        )
+        try:
+            model, access_mode = load_model_for_inference(model_path)
+        except Exception as exc:
+            return BehavioralFingerprintResult(
+                model_name=model_name or os.path.basename(model_path),
+                access_mode="unavailable",
+                execution_available=False,
+                total_eval_samples=0,
+                average_confidence=0.0,
+                confidence_entropy=0.0,
+                class_distribution={},
+                calibration_error_score=None,
+                prediction_stability_score=0.0,
+                anomalous_behavior_detected=False,
+                findings_summary=f"UNAVAILABLE: model execution could not be started: {exc}"
+            )
 
         samples = self._get_samples(dataset, num_eval)
 
@@ -289,7 +311,8 @@ class ModelFingerprinter:
                     or os.path.basename(model_path)
                 ),
 
-                access_mode="white_box",
+                access_mode=access_mode,
+                execution_available=False,
 
                 total_eval_samples=0,
 
@@ -360,7 +383,7 @@ class ModelFingerprinter:
                     or os.path.basename(model_path)
                 ),
 
-                access_mode="white_box",
+                access_mode=access_mode,
 
                 total_eval_samples=0,
 
@@ -510,7 +533,7 @@ class ModelFingerprinter:
                 or os.path.basename(model_path)
             ),
 
-            access_mode="white_box",
+            access_mode=access_mode,
 
             total_eval_samples=successful_samples,
 
@@ -532,6 +555,8 @@ class ModelFingerprinter:
                 prediction_stability,
                 4
             ),
+
+            confidence_std=round(float(np.std(confidence_array)), 4),
 
             anomalous_behavior_detected=anomalous,
 
@@ -556,13 +581,9 @@ class ModelFingerprinter:
             - list of image paths
         """
 
-        reference_model = load_sample_model(
-            reference_model_path
-        )
+        reference_model, reference_access_mode = load_model_for_inference(reference_model_path)
 
-        candidate_model = load_sample_model(
-            candidate_model_path
-        )
+        candidate_model, candidate_access_mode = load_model_for_inference(candidate_model_path)
 
         samples = self._get_samples(dataset, num_eval)
 
@@ -830,7 +851,42 @@ class ModelFingerprinter:
 
             anomalous_behavior_detected=anomalous,
 
+            execution_available=True,
+            access_mode=f"reference:{reference_access_mode};candidate:{candidate_access_mode}",
+
             findings_summary=" ".join(
                 findings
             )
         )
+
+    def fingerprint_dummy_or_callable(
+        self,
+        model_or_fn: Any,
+        dataset: Any,
+        num_eval: int = 50
+    ) -> BehavioralFingerprintResult:
+        """Compatibility entry point with no synthetic prediction fallback."""
+        if isinstance(model_or_fn, str) and os.path.exists(model_or_fn):
+            return self.fingerprint_model(model_or_fn, dataset, num_eval=num_eval)
+        if callable(model_or_fn):
+            return self.fingerprint_callable(model_or_fn, dataset, num_eval=num_eval)
+        if isinstance(model_or_fn, torch.nn.Module):
+            return self._fingerprint_loaded_model(
+                model_or_fn, dataset, num_eval, "supplied-model", "white_box"
+            )
+        return BehavioralFingerprintResult(
+            model_name="unavailable",
+            access_mode="unavailable",
+            execution_available=False,
+            total_eval_samples=0,
+            average_confidence=0.0,
+            confidence_entropy=0.0,
+            class_distribution={},
+            prediction_stability_score=0.0,
+            anomalous_behavior_detected=False,
+            findings_summary=(
+                "Behavioral fingerprint unavailable: no supplied model or "
+                "callable predictor was provided; no dummy predictions were generated."
+            )
+        )
+

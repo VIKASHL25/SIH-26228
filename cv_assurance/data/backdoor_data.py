@@ -10,8 +10,8 @@ class TriggerSample(BaseModel):
     file_name: str
     trigger_family: str # "corner_patch", "blended_trigger", "spectral_trigger"
     confidence: float # 0.0 to 1.0
-    contributor_id: str
-    batch_id: str
+    contributor_id: Optional[str] = None
+    batch_id: Optional[str] = None
     bbox_location: Optional[List[int]] = None # [x, y, w, h]
     evidence_score: float = 0.0
     details: str

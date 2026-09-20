@@ -121,8 +121,9 @@ class VisDroneIngester:
                 width=w,
                 height=h,
                 boxes=boxes,
-                contributor_id="contributor_alpha",
-                batch_id="batch_01",
+                contributor_id=None,
+                batch_id=None,
+                source_id=None,
                 format="visdrone"
             ))
 

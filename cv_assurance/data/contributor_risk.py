@@ -8,7 +8,7 @@ from .ood_detector import OODAnalysisResult
 from .backdoor_data import DataBackdoorResult
 
 class ContributorRiskProfile(BaseModel):
-    contributor_id: str
+    contributor_id: Optional[str] = None
     total_samples: int
     flagged_samples_count: int
     risk_score: float # 0.0 to 1.0
@@ -24,6 +24,7 @@ class ContributorRiskProfile(BaseModel):
     dominant_risk_factor: str = "None"
     recommended_action: str
     explanation: str
+    affected_batches: List[Optional[str]] = Field(default_factory=list)
 
 class ContributorRiskResult(BaseModel):
     total_contributors: int
@@ -122,6 +123,10 @@ class ContributorRiskAggregator:
 
             all_flagged = data["dup_samples"] | set(data["label_samples"].keys()) | data["ood_samples"] | set(data["poison_samples"].keys())
             flagged_tot = len(all_flagged)
+            affected_batches = sorted({
+                s.batch_id for s in dataset.samples
+                if s.sample_id in all_flagged
+            }, key=lambda value: "" if value is None else str(value))
 
             # Volume-normalized evidence scores (0.0 to 1.0)
             dup_ratio = dup_c / tot
@@ -211,6 +216,7 @@ class ContributorRiskAggregator:
                 dominant_risk_factor=top_factor,
                 recommended_action=action,
                 explanation=explanation
+                ,affected_batches=affected_batches
             ))
 
         return ContributorRiskResult(

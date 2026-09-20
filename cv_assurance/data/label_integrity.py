@@ -17,8 +17,8 @@ class MislabelledSample(BaseModel):
     confidence_level: str # "HIGH", "MEDIUM", "LOW"
     knn_consensus: float
     centroid_distance_margin: float
-    contributor_id: str
-    batch_id: str
+    contributor_id: Optional[str] = None
+    batch_id: Optional[str] = None
     reason: str
 
 class ContributorConfusionStats(BaseModel):
@@ -35,6 +35,10 @@ class LabelIntegrityResult(BaseModel):
     systematic_pattern_detected: bool
     flagged_samples: List[MislabelledSample] = Field(default_factory=list)
     contributor_confusion_stats: List[ContributorConfusionStats] = Field(default_factory=list)
+    class_counts: Dict[str, int] = Field(default_factory=dict)
+    minimum_class_sample_requirement: int = 5
+    trusted_label_verification: bool = False
+    confidence_semantics: str = "heuristic_evidence_level_not_calibrated_probability"
 
 class LabelIntegrityAnalyzer:
     """
@@ -110,6 +114,10 @@ class LabelIntegrityAnalyzer:
         centroid_margin_threshold: float = 0.02
     ) -> LabelIntegrityResult:
         samples = dataset.samples
+        class_counts: Dict[str, int] = {}
+        for sample in samples:
+            class_id = sample.boxes[0].category_id if sample.boxes else 0
+            class_counts[str(class_id)] = class_counts.get(str(class_id), 0) + 1
         if len(samples) < k_neighbors + 1:
             return LabelIntegrityResult(
                 total_samples=len(samples),
@@ -117,7 +125,8 @@ class LabelIntegrityAnalyzer:
                 mislabelling_rate=0.0,
                 systematic_pattern_detected=False,
                 flagged_samples=[],
-                contributor_confusion_stats=[]
+                contributor_confusion_stats=[],
+                class_counts=class_counts
             )
 
         features = []
@@ -139,7 +148,8 @@ class LabelIntegrityAnalyzer:
                 mislabelling_rate=0.0,
                 systematic_pattern_detected=False,
                 flagged_samples=[],
-                contributor_confusion_stats=[]
+                contributor_confusion_stats=[],
+                class_counts=class_counts
             )
 
         X = np.array(features)
@@ -189,7 +199,11 @@ class LabelIntegrityAnalyzer:
             has_strong_consensus = (consensus >= 0.80)
             has_centroid_support = (consensus >= min_consensus_threshold and centroid_margin >= centroid_margin_threshold)
 
-            if given_lbl != most_common_lbl and (has_strong_consensus or has_centroid_support):
+            prevalence_adequate = (
+                int(np.sum(y == given_lbl)) >= 5 and
+                int(np.sum(y == most_common_lbl)) >= 5
+            )
+            if given_lbl != most_common_lbl and prevalence_adequate and (has_strong_consensus or has_centroid_support):
                 # Confidence stratification
                 if consensus >= 0.80 and centroid_margin >= 0.05:
                     conf_level = "HIGH"
@@ -264,6 +278,7 @@ class LabelIntegrityAnalyzer:
             mislabelling_rate=round(mislabel_rate, 4),
             systematic_pattern_detected=systematic_detected,
             flagged_samples=flagged,
-            contributor_confusion_stats=contrib_stats
+            contributor_confusion_stats=contrib_stats,
+            class_counts=class_counts
         )
 

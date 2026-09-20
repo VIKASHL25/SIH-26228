@@ -1,0 +1,29 @@
+{
+  "battery_version": "module2-reference-battery-v1",
+  "dataset": "demo_assets/eval_coco",
+  "source": "repository-controlled-COCO-evaluation-fixture",
+  "task_assumption": "4-class image classification using the bundled 64x64 RGB PyTorch demo model",
+  "expected_coverage": {
+    "sample_count": 30,
+    "class_labels": "not inferred from image paths; behavioral comparison is unlabeled",
+    "coverage_statement": "Deterministic regression battery only; not universal computer-vision coverage"
+  },
+  "preprocessing": {
+    "resize": [64, 64],
+    "channel_order": "BGR-to-RGB",
+    "scale": "divide_uint8_by_255"
+  },
+  "samples": [
+    "eval_img_001.jpg", "eval_img_002.jpg", "eval_img_003.jpg", "eval_img_004.jpg", "eval_img_005.jpg",
+    "eval_img_006.jpg", "eval_img_007.jpg", "eval_img_008.jpg", "eval_img_009.jpg", "eval_img_010.jpg",
+    "eval_img_011.jpg", "eval_img_012.jpg", "eval_img_013.jpg", "eval_img_014.jpg", "eval_img_015.jpg",
+    "eval_img_016.jpg", "eval_img_017.jpg", "eval_img_018.jpg", "eval_img_019.jpg", "eval_img_020.jpg",
+    "eval_img_021.jpg", "eval_img_022.jpg", "eval_img_023.jpg", "eval_img_024.jpg", "eval_img_025.jpg",
+    "eval_img_026.jpg", "eval_img_027.jpg", "eval_img_028.jpg", "eval_img_029.jpg", "eval_img_030.jpg"
+  ],
+  "creation": {
+    "created_by": "repository fixture",
+    "creation_version": "1.0.0",
+    "deterministic_order": "lexicographic filename order"
+  }
+}

@@ -2,19 +2,19 @@
 
 ## Objective
 
-Module 2 assesses a received model against a trusted reference without relying on filenames or metadata. It is offline and model-agnostic at the file-integrity boundary, with deeper analysis available for the supported demo PyTorch classifier.
+Module 2 assesses a received model against a trusted reference without relying on filenames or metadata. It is offline at the file-integrity boundary. Behavioral execution is verified for the bundled PyTorch model and explicit callable black-box adapters; unsupported runtimes are reported unavailable.
 
 ## Architecture
 
 1. `ModelHasher` computes a streaming SHA-256 digest for `.pt`, `.pth`, `.safetensors`, `.onnx`, and TorchScript extensions and compares it with a trusted digest.
-2. `ModelFingerprinter` runs the same deterministic image battery through reference and candidate models, measuring prediction agreement, confidence, entropy, class distribution, and stability.
-3. `WhiteBoxAnalyzer` inspects tensor-only PyTorch state dictionaries for layer shape, mean, standard deviation, L2 norm, sparsity, and parameter anomalies. `analyze_model` also supports an already-loaded module.
-4. `ModelBackdoorProbe` applies reproducible corner, blended, or spectral probes and reports trigger-associated prediction changes. This is evidence of backdoor-like behavior, not proof of a backdoor.
+2. `ModelFingerprinter` runs the same deterministic image battery through reference and candidate models, measuring prediction agreement, confidence, entropy, class distribution, and stability. The battery manifest is `demo_assets/eval_coco/reference_battery.json` and is explicitly limited to the bundled 4-class demo classification task.
+3. `WhiteBoxAnalyzer` inspects tensor-only PyTorch state dictionaries for layer shape, mean, standard deviation, L2 norm, sparsity, and parameter anomalies. When a trusted reference is supplied, relative parameter deviations are reported separately from heuristic thresholds. `analyze_model` also supports an already-loaded module and optional forward-hook activation statistics.
+4. `ModelBackdoorProbe` applies reproducible corner, blended, or spectral probes and reports trigger-associated prediction changes for the supported PyTorch benchmark. This is heuristic evidence of backdoor-like behavior, not universal backdoor detection or proof of a backdoor.
 5. `Module2Benchmark` fuses independent hash, white-box, behavioral, and trigger evidence and prints per-model findings.
 
 ## Supported model types and fallback
 
-File hashing supports PyTorch checkpoints, SafeTensors, ONNX, and TorchScript file extensions. The bundled behavioral benchmark reconstructs the known `DummyCVModel` state-dict architecture. Other architectures require a caller-supplied loader or prediction adapter. A prediction adapter can be fingerprinted with `fingerprint_callable`; it reports `access_mode=black_box` and does not inspect weights. Unsupported or inaccessible internals are reported as `WHITE-BOX UNAVAILABLE` rather than failing the assurance pipeline.
+File hashing supports PyTorch checkpoints, SafeTensors, ONNX, and TorchScript file extensions. Behavioral execution reconstructs only the known bundled `DummyCVModel` state-dict architecture for PyTorch artifacts, loads valid TorchScript artifacts directly, and uses ONNX Runtime only when the offline dependency is installed. Other PyTorch architectures require a caller-supplied loader or prediction adapter. A prediction adapter is fingerprinted from its actual outputs, reports `access_mode=black_box`, and does not inspect weights. Unsupported or inaccessible execution returns `UNAVAILABLE`; dummy predictions are never substituted. Runtime support is not considered VERIFIED until the corresponding local dependencies and tests execute.
 
 ## Benchmark methodology
 
@@ -30,7 +30,8 @@ Each assessment records the candidate and reference digest, hash match, white-bo
 - Behavioral probing is battery- and trigger-dependent. It cannot detect every backdoor and does not establish causality.
 - The current bundled behavioral loader targets the demo PyTorch architecture; ONNX execution is not silently assumed when an ONNX runtime is absent.
 - Tensor-only loading is used for inspection where supported to avoid executing arbitrary checkpoint objects. Callers must apply their own sandbox policy when loading arbitrary model code.
-- Calibration/error metrics requiring ground-truth labels are not inferred from unlabeled image paths; the current fingerprint reports this field as unavailable.
+- Calibration/error metrics requiring ground-truth labels are not inferred from unlabeled image paths; the current fingerprint reports calibration as unavailable and labels deviation confidence as heuristic/evidence-derived rather than calibrated.
+- Fixed trigger probes provide heuristic backdoor-like evidence only; they are not universal backdoor detection. Parameter hash mismatches prove byte differences, not malicious intent.
 
 ## Module 1 compatibility
 
