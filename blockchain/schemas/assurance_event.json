@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AssuranceEvent",
+  "description": "Cryptographic assurance event schema for Hyperledger Fabric immutable evidence ledger",
+  "type": "object",
+  "required": [
+    "event_id",
+    "event_type",
+    "asset_id",
+    "timestamp_utc",
+    "software_version"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "description": "Unique deterministic or UUID-based event identifier"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "DATASET_REGISTERED",
+        "CONTRIBUTOR_REGISTERED",
+        "DATASET_ASSESSED",
+        "CONTRIBUTOR_RISK_RECORDED",
+        "MODEL_REGISTERED",
+        "MODEL_VERIFIED",
+        "MODEL_TAMPER_DETECTED",
+        "INFERENCE_RECORDED",
+        "INFERENCE_VERIFIED",
+        "INFERENCE_TAMPER_DETECTED",
+        "REPLAY_DETECTED",
+        "SHIFT_ASSESSMENT_RECORDED",
+        "ASSURANCE_REPORT_RECORDED",
+        "AUDIT_BATCH_ANCHORED",
+        "QUARANTINE_RECORDED"
+      ]
+    },
+    "asset_id": {
+      "type": "string",
+      "description": "Dataset path, model ID, record ID, or report ID"
+    },
+    "contributor_id": {
+      "type": "string",
+      "description": "Submitting or affected contributor organization ID"
+    },
+    "dataset_version": {
+      "type": "string"
+    },
+    "model_version": {
+      "type": "string"
+    },
+    "image_hash": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "model_hash": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "manifest_hash": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "preprocessing_hash": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "inference_hash": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "prediction_hash": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "binding_hash": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "report_hash": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "audit_root_hash": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "merkle_root": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "batch_size": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
+    },
+    "disposition": {
+      "type": "string",
+      "enum": ["ACCEPT", "REVIEW", "QUARANTINE"]
+    },
+    "sequence_number": {
+      "type": "integer"
+    },
+    "timestamp_utc": {
+      "type": "number"
+    },
+    "timestamp_iso": {
+      "type": "string"
+    },
+    "software_version": {
+      "type": "string",
+      "default": "1.0.0"
+    },
+    "previous_event_id": {
+      "type": "string"
+    },
+    "tx_id": {
+      "type": "string"
+    },
+    "block_number": {
+      "type": "integer"
+    },
+    "signer_msp": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

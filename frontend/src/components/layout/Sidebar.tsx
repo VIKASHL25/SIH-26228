@@ -7,6 +7,7 @@ import {
   Compass,
   Users,
   ScrollText,
+  Link2,
   SearchCode,
   FileCheck2,
   ShieldAlert,
@@ -65,6 +66,13 @@ export const Sidebar: React.FC = () => {
       id: 'audit',
       label: 'Audit Trail',
       icon: <ScrollText className="w-4 h-4" />
+    },
+    {
+      id: 'blockchain',
+      label: 'Trust Ledger',
+      icon: <Link2 className="w-4 h-4 text-amber-400" />,
+      badge: 'Fabric',
+      badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30'
     },
     {
       id: 'findings',

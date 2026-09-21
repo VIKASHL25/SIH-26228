@@ -1,0 +1,36 @@
+# ---------------------------------------------------------------------------
+# Hyperledger Fabric Crypto Generator Configuration
+# Ministry of Defence DGIS / SIH-26228 Assurance Consortium
+# ---------------------------------------------------------------------------
+
+OrdererOrgs:
+  - Name: Orderer
+    Domain: assurance.mod.mil
+    EnableNodeOUs: true
+    Specs:
+      - Hostname: orderer
+
+PeerOrgs:
+  - Name: AssuranceAuthority
+    Domain: assurance.mod.mil
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+    Users:
+      Count: 1
+
+  - Name: ContributorOrg
+    Domain: contributor.mod.mil
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+    Users:
+      Count: 1
+
+  - Name: ModelAuthority
+    Domain: model.mod.mil
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+    Users:
+      Count: 1

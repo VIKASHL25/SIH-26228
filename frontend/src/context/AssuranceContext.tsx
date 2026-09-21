@@ -20,6 +20,7 @@ export type NavigationTab =
   | 'shift'
   | 'contributors'
   | 'audit'
+  | 'blockchain'
   | 'findings'
   | 'reports'
   | 'coverage';

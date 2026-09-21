@@ -317,3 +317,110 @@ export interface CoverageResponse {
   total_capabilities: number;
   supported_count: number;
 }
+
+// Blockchain Trust & Evidence Ledger Types
+export interface BlockchainStatus {
+  status: 'CONNECTED' | 'DISCONNECTED' | 'LOCAL_EMULATED' | 'UNAVAILABLE';
+  network_type: string;
+  channel_id: string;
+  chaincode_name: string;
+  chaincode_version: string;
+  ledger_height: number;
+  total_transactions: number;
+  active_peers: string[];
+  endorsing_organizations: string[];
+  connected_msp: string;
+  mode: string;
+  last_block_hash?: string;
+  timestamp_utc: number;
+}
+
+export interface BlockchainEvent {
+  event_id: string;
+  event_type:
+    | 'DATASET_REGISTERED'
+    | 'CONTRIBUTOR_REGISTERED'
+    | 'DATASET_ASSESSED'
+    | 'CONTRIBUTOR_RISK_RECORDED'
+    | 'MODEL_REGISTERED'
+    | 'MODEL_VERIFIED'
+    | 'MODEL_TAMPER_DETECTED'
+    | 'INFERENCE_RECORDED'
+    | 'INFERENCE_VERIFIED'
+    | 'INFERENCE_TAMPER_DETECTED'
+    | 'REPLAY_DETECTED'
+    | 'SHIFT_ASSESSMENT_RECORDED'
+    | 'ASSURANCE_REPORT_RECORDED'
+    | 'AUDIT_BATCH_ANCHORED'
+    | 'QUARANTINE_RECORDED';
+  asset_id: string;
+  contributor_id?: string;
+  dataset_version?: string;
+  model_version?: string;
+  image_hash?: string;
+  model_hash?: string;
+  manifest_hash?: string;
+  preprocessing_hash?: string;
+  inference_hash?: string;
+  prediction_hash?: string;
+  binding_hash?: string;
+  report_hash?: string;
+  audit_root_hash?: string;
+  merkle_root?: string;
+  batch_size?: number;
+  severity?: string;
+  disposition?: 'ACCEPT' | 'REVIEW' | 'QUARANTINE';
+  sequence_number?: number;
+  timestamp_utc: number;
+  timestamp_iso: string;
+  software_version: string;
+  previous_event_id?: string;
+  tx_id?: string;
+  block_number?: number;
+  signer_msp?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface DualVerificationResult {
+  asset_id: string;
+  asset_type: 'INFERENCE_RECORD' | 'MODEL' | 'DATASET' | 'REPORT';
+  local_verification_passed: boolean;
+  local_tamper_detected: boolean;
+  local_details: string;
+
+  blockchain_anchor_found: boolean;
+  blockchain_hash_matched: boolean;
+  registered_blockchain_hash?: string;
+  current_computed_hash?: string;
+  anchored_tx_id?: string;
+  anchored_block_number?: number;
+  anchored_timestamp_iso?: string;
+  anchored_by_msp?: string;
+
+  final_assurance_status:
+    | 'TRUST_VERIFIED'
+    | 'TAMPER_DETECTED'
+    | 'MODEL_SUBSTITUTED'
+    | 'UNANCHORED'
+    | 'QUARANTINED'
+    | 'LOCAL_VERIFICATION_FAILED';
+  recommended_disposition: 'ACCEPT' | 'REVIEW' | 'QUARANTINE';
+  discrepancy_reason?: string;
+}
+
+export interface TamperSimulationResult {
+  original_record_id: string;
+  tampered_record: any;
+  verification_result: DualVerificationResult;
+}
+
+export interface ReplaySimulationResult {
+  record_id: string;
+  first_submission_passed: boolean;
+  replay_attempt_tamper_detected: boolean;
+  replay_detected: boolean;
+  blockchain_history_count: number;
+  latest_anchor_tx: string;
+  disposition: 'ACCEPT' | 'REVIEW' | 'QUARANTINE';
+}
+

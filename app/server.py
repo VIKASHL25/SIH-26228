@@ -4,6 +4,7 @@ import json
 import time
 import uuid
 import secrets
+import hashlib
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Body
 from fastapi.staticfiles import StaticFiles
@@ -30,6 +31,15 @@ from cv_assurance.model.fingerprint import ModelFingerprinter
 from cv_assurance.model.benchmark import Module2Benchmark
 from cv_assurance.shift.distribution_test import DistributionShiftDetector
 from cv_assurance.data.ingester import DatasetIngester
+from blockchain.client import (
+    FabricClient,
+    BlockchainAnchorService,
+    BlockchainDualVerifier,
+    AssuranceEvent,
+    AssuranceEventType,
+    BlockchainStatus,
+    DualVerificationResult
+)
 
 app = FastAPI(
     title="Trustworthy CV Integrity Assurance & Forensics Console API",
@@ -61,6 +71,9 @@ prov_engine = CryptographicProvenanceEngine()
 replay_registry = ReplayProtectionRegistry()
 whitebox_analyzer = WhiteBoxAnalyzer()
 shift_detector = DistributionShiftDetector()
+blockchain_client = FabricClient()
+blockchain_anchor_service = BlockchainAnchorService(blockchain_client)
+blockchain_verifier = BlockchainDualVerifier(blockchain_client, prov_engine)
 
 # Mount static asset folders
 if os.path.exists(DEMO_DIR):
@@ -596,7 +609,180 @@ async def get_coverage_matrix():
         "supported_count": sum(1 for c in capabilities if c["status"] == "SUPPORTED")
     })
 
+# -------------------------------------------------------------
+# BLOCKCHAIN TRUST & EVIDENCE LEDGER API
+# -------------------------------------------------------------
+
+@app.get("/api/blockchain/status")
+async def get_blockchain_status():
+    """Returns real-time Hyperledger Fabric network connection and ledger state."""
+    try:
+        return blockchain_client.get_status().model_dump()
+    except Exception as e:
+        return {
+            "status": "UNAVAILABLE",
+            "network_type": "Hyperledger Fabric (Permissioned)",
+            "error": str(e),
+            "mode": "OFFLINE_AIR_GAPPED"
+        }
+
+@app.get("/api/blockchain/events")
+async def get_blockchain_events(
+    event_type: Optional[str] = None,
+    asset_id: Optional[str] = None,
+    contributor_id: Optional[str] = None,
+    limit: int = 100
+):
+    """Queries immutable assurance events committed to the blockchain ledger."""
+    evts = blockchain_client.query_events(
+        event_type=event_type,
+        asset_id=asset_id,
+        contributor_id=contributor_id,
+        limit=limit
+    )
+    return [e.model_dump() for e in evts]
+
+@app.get("/api/blockchain/event/{event_id}")
+async def get_blockchain_event_by_id(event_id: str):
+    """Retrieves specific blockchain event by its unique event ID."""
+    evt = blockchain_client.get_event(event_id)
+    if not evt:
+        raise HTTPException(status_code=404, detail=f"Event {event_id} not found on ledger")
+    return evt.model_dump()
+
+@app.get("/api/blockchain/history/{asset_id}")
+async def get_blockchain_asset_history(asset_id: str):
+    """Retrieves full chronological ledger history for an asset."""
+    history = blockchain_client.get_asset_history(asset_id)
+    return [e.model_dump() for e in history]
+
+class AnchorInferenceRequest(BaseModel):
+    record: Dict[str, Any]
+    contributor_id: Optional[str] = None
+
+@app.post("/api/blockchain/anchor/inference")
+async def anchor_inference_record_endpoint(req: AnchorInferenceRequest):
+    """Anchors a ProtectedInferenceRecord cryptographic binding onto the ledger."""
+    try:
+        evt = blockchain_anchor_service.anchor_inference_record(
+            record=req.record,
+            contributor_id=req.contributor_id
+        )
+        return evt.model_dump()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+class VerifyInferenceBlockchainRequest(BaseModel):
+    record: Dict[str, Any]
+    image_bytes_base64: Optional[str] = None
+
+@app.post("/api/blockchain/verify/inference")
+async def verify_inference_blockchain_endpoint(req: VerifyInferenceBlockchainRequest):
+    """Executes dual-layer verification (Local Cryptography + Hyperledger Fabric Anchor)."""
+    try:
+        dual_res = blockchain_verifier.verify_inference_record_dual(record=req.record)
+        return dual_res.model_dump()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+class VerifyModelBlockchainRequest(BaseModel):
+    model_id: str
+    model_path: Optional[str] = None
+    expected_version: str = "1.0.0"
+
+@app.post("/api/blockchain/verify/model")
+async def verify_model_blockchain_endpoint(req: VerifyModelBlockchainRequest):
+    """Dual-verifies active model weights against registered blockchain reference digest."""
+    mpath = req.model_path or os.path.join(DEMO_DIR, "sample_model.pt")
+    dual_res = blockchain_verifier.verify_model_dual(
+        model_id=req.model_id,
+        current_model_path=mpath,
+        expected_version=req.expected_version
+    )
+    return dual_res.model_dump()
+
+@app.post("/api/blockchain/simulate_tampering")
+async def simulate_tampering_endpoint(record_id: Optional[str] = None):
+    """
+    Simulates a controlled inference tampering attack.
+    Demonstrates local cryptographic failure and blockchain anchor mismatch.
+    """
+    img_hash_1 = hashlib.sha256(b"SAMPLE_AERIAL_FRAME_ALPHA").hexdigest()
+    model_path = os.path.join(DEMO_DIR, "sample_model.pt")
+    model_hash = ModelHasher.compute_file_sha256(model_path) if os.path.exists(model_path) else "fdab8c003aa41f4c3795f97f" * 2
+    preds = [
+        InferenceOutputPrediction(box=[120.0, 80.0, 45.0, 95.0], confidence=0.942, category_id=4, category_name="car"),
+        InferenceOutputPrediction(box=[310.0, 240.0, 60.0, 110.0], confidence=0.887, category_id=5, category_name="van")
+    ]
+    clean_rec_obj = prov_engine.create_protected_record(
+        image_path_or_hash=img_hash_1,
+        model_hash=model_hash,
+        predictions=preds,
+        sequence_number=101,
+        nonce="nonce_demo_tamper_001"
+    )
+    clean_rec = clean_rec_obj.model_dump()
+
+    # Anchor the legitimate clean record to blockchain first
+    blockchain_anchor_service.anchor_inference_record(clean_rec, contributor_id="contributor_A")
+
+    # Create tampered variant (tampered predictions and mismatching binding)
+    tampered_rec = json.loads(json.dumps(clean_rec))
+    if tampered_rec.get("predictions"):
+        tampered_rec["predictions"][0]["category_name"] = "pedestrian_tampered"
+        tampered_rec["predictions"][0]["confidence"] = 0.9999
+    tampered_rec["binding_hash_sha256"] = hashlib.sha256(b"TAMPERED_PREDICTION_BINDING").hexdigest()
+
+    # Execute dual verification
+    dual_res = blockchain_verifier.verify_inference_record_dual(tampered_rec)
+    return {
+        "original_record_id": clean_rec["record_id"],
+        "tampered_record": tampered_rec,
+        "verification_result": dual_res.model_dump()
+    }
+
+@app.post("/api/blockchain/simulate_replay")
+async def simulate_replay_endpoint():
+    """
+    Simulates a replay attack against a previously accepted record.
+    Demonstrates replay protection detection and historical blockchain anchor query.
+    """
+    img_hash_1 = hashlib.sha256(b"SAMPLE_AERIAL_FRAME_BETA").hexdigest()
+    model_path = os.path.join(DEMO_DIR, "sample_model.pt")
+    model_hash = ModelHasher.compute_file_sha256(model_path) if os.path.exists(model_path) else "fdab8c003aa41f4c3795f97f" * 2
+    preds = [
+        InferenceOutputPrediction(box=[200.0, 150.0, 30.0, 50.0], confidence=0.915, category_id=1, category_name="pedestrian")
+    ]
+    rec_obj = prov_engine.create_protected_record(
+        image_path_or_hash=img_hash_1,
+        model_hash=model_hash,
+        predictions=preds,
+        sequence_number=102,
+        nonce="nonce_demo_replay_002"
+    )
+    
+    # 1. Anchor to blockchain
+    evt = blockchain_anchor_service.anchor_inference_record(rec_obj, contributor_id="contributor_A")
+
+    # 2. Register once locally
+    prov_engine.verify_record(rec_obj, register_if_valid=True)
+
+    # 3. Second attempt (replay)
+    replay_result = prov_engine.verify_record(rec_obj, register_if_valid=True)
+    history = blockchain_client.get_asset_history(rec_obj.record_id)
+
+    return {
+        "record_id": rec_obj.record_id,
+        "first_submission_passed": True,
+        "replay_attempt_tamper_detected": replay_result.tamper_detected,
+        "replay_detected": replay_result.replay_detected,
+        "blockchain_history_count": len(history),
+        "latest_anchor_tx": evt.tx_id,
+        "disposition": "QUARANTINE" if replay_result.replay_detected else "ACCEPT"
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)
+
 

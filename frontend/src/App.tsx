@@ -16,6 +16,7 @@ import { AuditTrailPage } from './pages/AuditTrailPage';
 import { FindingsEvidencePage } from './pages/FindingsEvidencePage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SystemCoveragePage } from './pages/SystemCoveragePage';
+import { BlockchainLedgerPage } from './pages/BlockchainLedgerPage';
 
 const AppContent: React.FC = () => {
   const { 
@@ -42,6 +43,8 @@ const AppContent: React.FC = () => {
         return <ContributorRiskPage />;
       case 'audit':
         return <AuditTrailPage />;
+      case 'blockchain':
+        return <BlockchainLedgerPage />;
       case 'findings':
         return <FindingsEvidencePage />;
       case 'reports':

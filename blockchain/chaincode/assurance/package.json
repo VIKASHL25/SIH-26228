@@ -1,0 +1,28 @@
+{
+  "name": "assurance-chaincode",
+  "version": "1.0.0",
+  "description": "Hyperledger Fabric Smart Contract for Trustworthy Computer Vision Integrity Assurance & Evidence Ledger",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "engines": {
+    "node": ">=18",
+    "npm": ">=9"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc -w",
+    "prestart": "npm run build",
+    "start": "fabric-chaincode-node server --chaincode-address=$CHAINCODE_SERVER_ADDRESS --chaincode-id=$CHAINCODE_ID"
+  },
+  "engineStrict": true,
+  "author": "Ministry of Defence DGIS / SIH-26228 Assurance Consortium",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "fabric-contract-api": "^2.5.4",
+    "fabric-shim": "^2.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  }
+}

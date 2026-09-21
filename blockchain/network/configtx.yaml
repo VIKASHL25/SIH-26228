@@ -1,0 +1,182 @@
+---
+# ---------------------------------------------------------------------------
+# Hyperledger Fabric Channel & Consortium Configuration (configtx.yaml)
+# Ministry of Defence DGIS / SIH-26228 Assurance Consortium
+# ---------------------------------------------------------------------------
+
+Organizations:
+  - &OrdererOrg
+    Name: OrdererOrg
+    ID: OrdererMSP
+    MSPDir: crypto-config/ordererOrganizations/assurance.mod.mil/msp
+    Policies:
+      Reader:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Writer:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Admin:
+        Type: Signature
+        Rule: "OR('OrdererMSP.admin')"
+
+  - &AssuranceAuthority
+    Name: AssuranceAuthority
+    ID: AssuranceAuthorityMSP
+    MSPDir: crypto-config/peerOrganizations/assurance.mod.mil/msp
+    Policies:
+      Reader:
+        Type: Signature
+        Rule: "OR('AssuranceAuthorityMSP.admin', 'AssuranceAuthorityMSP.peer', 'AssuranceAuthorityMSP.client')"
+      Writer:
+        Type: Signature
+        Rule: "OR('AssuranceAuthorityMSP.admin', 'AssuranceAuthorityMSP.client')"
+      Admin:
+        Type: Signature
+        Rule: "OR('AssuranceAuthorityMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('AssuranceAuthorityMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.assurance.mod.mil
+        Port: 7051
+
+  - &ContributorOrg
+    Name: ContributorOrg
+    ID: ContributorOrgMSP
+    MSPDir: crypto-config/peerOrganizations/contributor.mod.mil/msp
+    Policies:
+      Reader:
+        Type: Signature
+        Rule: "OR('ContributorOrgMSP.admin', 'ContributorOrgMSP.peer', 'ContributorOrgMSP.client')"
+      Writer:
+        Type: Signature
+        Rule: "OR('ContributorOrgMSP.admin', 'ContributorOrgMSP.client')"
+      Admin:
+        Type: Signature
+        Rule: "OR('ContributorOrgMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('ContributorOrgMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.contributor.mod.mil
+        Port: 9051
+
+  - &ModelAuthority
+    Name: ModelAuthority
+    ID: ModelAuthorityMSP
+    MSPDir: crypto-config/peerOrganizations/model.mod.mil/msp
+    Policies:
+      Reader:
+        Type: Signature
+        Rule: "OR('ModelAuthorityMSP.admin', 'ModelAuthorityMSP.peer', 'ModelAuthorityMSP.client')"
+      Writer:
+        Type: Signature
+        Rule: "OR('ModelAuthorityMSP.admin', 'ModelAuthorityMSP.client')"
+      Admin:
+        Type: Signature
+        Rule: "OR('ModelAuthorityMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('ModelAuthorityMSP.peer')"
+
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_5: true
+
+Application: &ApplicationDefaults
+  Organizations:
+  Policies:
+    LifecycleEndorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+    Endorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+    Read:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Write:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admin:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  OrdererType: etcdraft
+  Addresses:
+    - orderer.assurance.mod.mil:7050
+  EtcdRaft:
+    Consenters:
+      - Host: orderer.assurance.mod.mil
+        Port: 7050
+        ClientTLSCert: crypto-config/ordererOrganizations/assurance.mod.mil/orderers/orderer.assurance.mod.mil/tls/server.crt
+        ServerTLSCert: crypto-config/ordererOrganizations/assurance.mod.mil/orderers/orderer.assurance.mod.mil/tls/server.crt
+  BatchTimeout: 1s
+  BatchSize:
+    MaxMessageCount: 50
+    AbsoluteMaxBytes: 10 MB
+    PreferredMaxBytes: 2 MB
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    BlockValidation:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+  Capabilities:
+    <<: *OrdererCapabilities
+
+Channel: &ChannelDefaults
+  Policies:
+    Reads:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writes:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+  AssuranceGenesis:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *OrdererOrg
+      Capabilities: *OrdererCapabilities
+    Consortiums:
+      AssuranceConsortium:
+        Organizations:
+          - *AssuranceAuthority
+          - *ContributorOrg
+          - *ModelAuthority
+
+  AssuranceChannel:
+    <<: *ChannelDefaults
+    Consortium: AssuranceConsortium
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *AssuranceAuthority
+        - *ContributorOrg
+        - *ModelAuthority
+      Capabilities: *ApplicationCapabilities

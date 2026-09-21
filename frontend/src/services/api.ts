@@ -9,7 +9,12 @@ import {
   DistributionShiftResult,
   VisualEvidencePanel,
   CoverageResponse,
-  AuditEvent
+  AuditEvent,
+  BlockchainStatus,
+  BlockchainEvent,
+  DualVerificationResult,
+  TamperSimulationResult,
+  ReplaySimulationResult
 } from '../types';
 
 const API_BASE = '/api';
@@ -167,5 +172,83 @@ export const api = {
   async getCoverageMatrix(): Promise<CoverageResponse> {
     const res = await fetch(`${API_BASE}/coverage`);
     return handleResponse<CoverageResponse>(res, 'Failed to load system coverage matrix');
+  },
+
+  // -------------------------------------------------------------
+  // Hyperledger Fabric Blockchain Evidence Ledger API
+  // -------------------------------------------------------------
+  async getBlockchainStatus(): Promise<BlockchainStatus> {
+    const res = await fetch(`${API_BASE}/blockchain/status`);
+    return handleResponse<BlockchainStatus>(res, 'Failed to fetch blockchain network status');
+  },
+
+  async getBlockchainEvents(params?: {
+    event_type?: string;
+    asset_id?: string;
+    contributor_id?: string;
+    limit?: number;
+  }): Promise<BlockchainEvent[]> {
+    const query = new URLSearchParams();
+    if (params?.event_type) query.append('event_type', params.event_type);
+    if (params?.asset_id) query.append('asset_id', params.asset_id);
+    if (params?.contributor_id) query.append('contributor_id', params.contributor_id);
+    if (params?.limit) query.append('limit', params.limit.toString());
+
+    const res = await fetch(`${API_BASE}/blockchain/events?${query.toString()}`);
+    return handleResponse<BlockchainEvent[]>(res, 'Failed to fetch blockchain events');
+  },
+
+  async getBlockchainEventById(eventId: string): Promise<BlockchainEvent> {
+    const res = await fetch(`${API_BASE}/blockchain/event/${eventId}`);
+    return handleResponse<BlockchainEvent>(res, `Failed to load blockchain event ${eventId}`);
+  },
+
+  async getBlockchainAssetHistory(assetId: string): Promise<BlockchainEvent[]> {
+    const res = await fetch(`${API_BASE}/blockchain/history/${assetId}`);
+    return handleResponse<BlockchainEvent[]>(res, `Failed to load blockchain history for asset ${assetId}`);
+  },
+
+  async anchorInferenceOnBlockchain(record: any, contributorId?: string): Promise<BlockchainEvent> {
+    const res = await fetch(`${API_BASE}/blockchain/anchor/inference`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ record, contributor_id: contributorId })
+    });
+    return handleResponse<BlockchainEvent>(res, 'Failed to anchor inference record to blockchain');
+  },
+
+  async verifyInferenceOnBlockchain(record: any): Promise<DualVerificationResult> {
+    const res = await fetch(`${API_BASE}/blockchain/verify/inference`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ record })
+    });
+    return handleResponse<DualVerificationResult>(res, 'Blockchain inference verification failed');
+  },
+
+  async verifyModelOnBlockchain(modelId: string, modelPath?: string, expectedVersion: string = '1.0.0'): Promise<DualVerificationResult> {
+    const res = await fetch(`${API_BASE}/blockchain/verify/model`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model_id: modelId, model_path: modelPath, expected_version: expectedVersion })
+    });
+    return handleResponse<DualVerificationResult>(res, 'Blockchain model verification failed');
+  },
+
+  async simulateInferenceTampering(): Promise<TamperSimulationResult> {
+    const res = await fetch(`${API_BASE}/blockchain/simulate_tampering`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    return handleResponse<TamperSimulationResult>(res, 'Inference tampering simulation failed');
+  },
+
+  async simulateReplayAttack(): Promise<ReplaySimulationResult> {
+    const res = await fetch(`${API_BASE}/blockchain/simulate_replay`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    return handleResponse<ReplaySimulationResult>(res, 'Replay attack simulation failed');
   }
 };
+
