@@ -353,10 +353,42 @@ export const InferenceIntegrityPage: React.FC = () => {
                 <HashDisplay hash={currentRecord.model_digest_sha256} truncateLength={16} />
               </div>
 
+              {currentRecord.preprocessing_config_hash && (
+                <div className="flex justify-between items-center bg-slate-900/60 p-2.5 rounded border border-slate-800">
+                  <span className="text-slate-400">Preprocess Config SHA-256:</span>
+                  <HashDisplay hash={currentRecord.preprocessing_config_hash} truncateLength={16} />
+                </div>
+              )}
+
+              {currentRecord.inference_config_hash_sha256 && (
+                <div className="flex justify-between items-center bg-slate-900/60 p-2.5 rounded border border-slate-800">
+                  <span className="text-slate-400">Inference Config SHA-256:</span>
+                  <HashDisplay hash={currentRecord.inference_config_hash_sha256} truncateLength={16} />
+                </div>
+              )}
+
               <div className="flex justify-between items-center bg-slate-900/60 p-2.5 rounded border border-slate-800">
                 <span className="text-slate-400">HMAC-SHA256 Signature:</span>
                 <HashDisplay hash={currentRecord.hmac_signature} truncateLength={16} />
               </div>
+
+              {(currentRecord.preprocessing_config || currentRecord.inference_config) && (
+                <div className="pt-2 border-t border-slate-800/80 space-y-2">
+                  <span className="text-[11px] text-slate-400 uppercase tracking-wider block">Bound Execution Configs</span>
+                  {currentRecord.preprocessing_config && (
+                    <div className="bg-slate-950 p-2 rounded border border-slate-800/80 text-[11px]">
+                      <span className="text-cyan-400 font-semibold block mb-0.5">Preprocessing Config:</span>
+                      <pre className="text-slate-300 text-[10px] overflow-x-auto">{JSON.stringify(currentRecord.preprocessing_config, null, 2)}</pre>
+                    </div>
+                  )}
+                  {currentRecord.inference_config && (
+                    <div className="bg-slate-950 p-2 rounded border border-slate-800/80 text-[11px]">
+                      <span className="text-cyan-400 font-semibold block mb-0.5">Inference Config:</span>
+                      <pre className="text-slate-300 text-[10px] overflow-x-auto">{JSON.stringify(currentRecord.inference_config, null, 2)}</pre>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
