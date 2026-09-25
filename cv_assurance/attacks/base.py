@@ -1,10 +1,11 @@
 import abc
 import numpy as np
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from cv_assurance.data.ingester import BoundingBox
 
 class AttackResult(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     modified_image: Optional[Any] = None # np.ndarray
     modified_boxes: List[BoundingBox] = []
     attack_type: Optional[str] = None
@@ -14,9 +15,6 @@ class AttackResult(BaseModel):
     modified_label: Optional[str] = None
     modified_label_id: Optional[int] = None
     parameters: Dict[str, Any] = {}
-
-    class Config:
-        arbitrary_types_allowed = True
 
 class BaseAttack(abc.ABC):
     """

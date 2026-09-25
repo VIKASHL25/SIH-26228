@@ -169,6 +169,13 @@ async def run_assurance(req: AssuranceRunRequest = Body(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Assurance execution failed: {str(e)}")
 
+@app.get("/api/run_demo_analysis")
+@app.post("/api/run_demo_analysis")
+async def run_demo_analysis():
+    """Runs pipeline analysis on demo assets and returns the assurance report."""
+    req = AssuranceRunRequest()
+    return await run_assurance(req)
+
 # -------------------------------------------------------------
 # MODULE 2: MODEL INTEGRITY
 # -------------------------------------------------------------
@@ -224,6 +231,7 @@ async def hash_model_endpoint(req: ModelHashRequest):
 # MODULE 3A: INFERENCE PROVENANCE
 # -------------------------------------------------------------
 @app.post("/api/inference/verify_record")
+@app.post("/api/verify_inference_record")
 async def verify_inference_record(record: dict = Body(...)):
     """Verifies cryptographic binding, HMAC signature, image/model hash, and replay status."""
     try:
@@ -232,6 +240,57 @@ async def verify_inference_record(record: dict = Body(...)):
         return JSONResponse(content=res.model_dump(mode='json'))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/create_inference_record")
+async def create_inference_record_endpoint(
+    image_hash: Optional[str] = Form(None),
+    model_hash: Optional[str] = Form(None),
+    predictions_json: Optional[str] = Form(None),
+    record_data: Optional[dict] = Body(None)
+):
+    """Creates a signed ProtectedInferenceRecord from form data or JSON body."""
+    img_h = image_hash
+    mdl_h = model_hash
+    preds_raw = None
+
+    if record_data:
+        img_h = record_data.get("image_hash") or img_h
+        mdl_h = record_data.get("model_hash") or mdl_h
+        preds_raw = record_data.get("predictions") or record_data.get("predictions_json")
+
+    if predictions_json and not preds_raw:
+        try:
+            preds_raw = json.loads(predictions_json)
+        except Exception:
+            preds_raw = []
+
+    if isinstance(preds_raw, str):
+        try:
+            preds_raw = json.loads(preds_raw)
+        except Exception:
+            preds_raw = []
+
+    if not preds_raw:
+        preds_raw = [
+            {"box": [200.0, 200.0, 240.0, 280.0], "confidence": 0.94, "category_id": 0, "category_name": "vehicle_tank"}
+        ]
+
+    preds = []
+    for p in preds_raw:
+        if isinstance(p, dict):
+            preds.append(InferenceOutputPrediction(**p))
+        elif isinstance(p, InferenceOutputPrediction):
+            preds.append(p)
+
+    img_h = img_h or "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    mdl_h = mdl_h or "a3f8c7901b22e4d5678ef991002341ab8872619cd3000f2e1a"
+
+    rec = prov_engine.create_protected_record(
+        image_path_or_hash=img_h,
+        model_hash=mdl_h,
+        predictions=preds
+    )
+    return JSONResponse(content=rec.model_dump(mode='json'))
 
 @app.post("/api/inference/verify_chain")
 async def verify_inference_chain_endpoint(records: List[dict] = Body(...)):

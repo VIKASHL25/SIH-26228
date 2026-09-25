@@ -534,12 +534,30 @@ class AssuranceEngine:
         # -------------------------------------------------------------
         # 5. AGGREGATE HEALTH SCORE & DISPOSITION
         # -------------------------------------------------------------
+        # Filter primary technical findings to avoid double-counting derivative contributor summary findings
+        primary_findings = [f for f in findings if not (f.finding_id and f.finding_id.startswith("FND-CONTRIB-"))]
+
         critical_count = sum(1 for f in findings if f.severity == SeverityLevel.CRITICAL)
         high_count = sum(1 for f in findings if f.severity == SeverityLevel.HIGH)
         med_count = sum(1 for f in findings if f.severity == SeverityLevel.MEDIUM)
         low_count = sum(1 for f in findings if f.severity == SeverityLevel.LOW)
 
-        penalty = (critical_count * 35) + (high_count * 20) + (med_count * 10) + (low_count * 5)
+        prim_crit = [f for f in primary_findings if f.severity == SeverityLevel.CRITICAL]
+        prim_high = [f for f in primary_findings if f.severity == SeverityLevel.HIGH]
+        prim_med = [f for f in primary_findings if f.severity == SeverityLevel.MEDIUM]
+        prim_low = [f for f in primary_findings if f.severity == SeverityLevel.LOW]
+
+        # Calibrated diminishing marginal penalty formula
+        penalty = 0.0
+        for idx in range(len(prim_crit)):
+            penalty += 18.0 if idx == 0 else (12.0 if idx == 1 else 6.0)
+        for idx in range(len(prim_high)):
+            penalty += 10.0 if idx == 0 else (6.0 if idx == 1 else 3.0)
+        for idx in range(len(prim_med)):
+            penalty += 5.0 if idx == 0 else 3.0
+        for idx in range(len(prim_low)):
+            penalty += 2.0
+
         health_score = round(max(0.0, float(100.0 - penalty)), 1)
 
         if critical_count > 0 or health_score < 50.0:

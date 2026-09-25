@@ -142,11 +142,22 @@ export const AssuranceProvider: React.FC<{ children: ReactNode }> = ({ children 
           });
         }
 
+        const primaryFindings = initialFindings.filter(f => !f.finding_id.startsWith('FND-CONTRIB-'));
+        const critFindings = primaryFindings.filter(f => f.severity === 'CRITICAL');
+        const highFindings = primaryFindings.filter(f => f.severity === 'HIGH');
+        const medFindings = primaryFindings.filter(f => f.severity === 'MEDIUM');
+        const lowFindings = primaryFindings.filter(f => f.severity === 'LOW');
+
+        let penalty = 0;
+        critFindings.forEach((_, idx) => { penalty += idx === 0 ? 18 : (idx === 1 ? 12 : 6); });
+        highFindings.forEach((_, idx) => { penalty += idx === 0 ? 10 : (idx === 1 ? 6 : 3); });
+        medFindings.forEach((_, idx) => { penalty += idx === 0 ? 5 : 3; });
+        lowFindings.forEach(() => { penalty += 2; });
+
         const critCount = initialFindings.filter(f => f.severity === 'CRITICAL').length;
         const highCount = initialFindings.filter(f => f.severity === 'HIGH').length;
         const medCount = initialFindings.filter(f => f.severity === 'MEDIUM').length;
 
-        const penalty = (critCount * 35) + (highCount * 20) + (medCount * 10);
         const calcHealth = Math.max(0, Math.round((100 - penalty) * 10) / 10);
 
         setReport({
