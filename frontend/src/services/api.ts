@@ -17,7 +17,8 @@ import {
   ReplaySimulationResult
 } from '../types';
 
-const API_BASE = '/api';
+const RAW_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+const API_BASE = RAW_BASE ? (RAW_BASE.endsWith('/api') ? RAW_BASE : `${RAW_BASE}/api`) : '/api';
 
 async function handleResponse<T>(res: Response, fallbackMessage: string): Promise<T> {
   if (!res.ok) {
